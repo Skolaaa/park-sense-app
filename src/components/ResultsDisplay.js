@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, XCircle, Clock, DollarSign, Car, AlertTriangle, RotateCcw } from 'lucide-react';
 
-const ResultsDisplay = ({ analysisResult, onAnalyzeAnother }) => {
+const ResultsDisplay = ({ analysisResult, onAnalyzeAnother, showMockWarning = false }) => {
   if (!analysisResult) return null;
 
   const { 
@@ -31,6 +31,21 @@ const ResultsDisplay = ({ analysisResult, onAnalyzeAnother }) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-md mx-auto space-y-6">
+        
+        {/* Mock Data Warning */}
+        {(showMockWarning || analysisResult.isMockData) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-yellow-800 mb-1">Demo Result</h3>
+                <p className="text-sm text-yellow-700">
+                  This is mock data. Add your OpenAI API key for real parking sign analysis.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Main Result Card */}
         <div className={`rounded-xl p-6 text-center ${
           canPark 
