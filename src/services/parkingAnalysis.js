@@ -1,152 +1,39 @@
 // src/services/parkingAnalysis.js
-// OpenAI GPT-4o vision integration for Sydney parking sign analysis
+// Calls the /api/analyze serverless proxy, which holds the OpenAI API key
+// server-side. Falls back to mock data if the proxy is unavailable or unconfigured.
 
 export class ParkingAnalysisService {
   static async analyzeImage(imageData, selectedSide = null) {
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+    const optimizedImage = await this.optimizeImage(imageData);
 
-    if (!apiKey) {
-      throw new Error('OpenAI API key not found. Please add REACT_APP_OPENAI_API_KEY to your environment variables.');
-    }
-
+    let response;
     try {
-      const optimizedImage = await this.optimizeImage(imageData);
-
-      const directionalContext = selectedSide
-        ? `IMPORTANT DIRECTIONAL CONTEXT: The user is parked on the ${selectedSide.toUpperCase()} side of the sign. ` +
-          `Sydney parking signs use arrows to indicate which rules apply to each direction — left-facing arrows ` +
-          `govern vehicles to the left of the sign, right-facing arrows govern vehicles to the right. ` +
-          `You MUST evaluate ONLY the rules that apply to the ${selectedSide.toUpperCase()} side. ` +
-          `Ignore all rules that apply to the opposite direction.`
-        : '';
-
-      const systemPrompt = `You are an expert at reading and interpreting Australian parking signs, ` +
-        `with deep knowledge of Sydney City Council and NSW Roads & Maritime Services rules.
-
-Current time context: ${new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })}
-
-${directionalContext}
-
-Sydney-specific rules to apply:
-- "No Stopping" means no stopping at all — canPark must be false, always.
-- "No Parking" means a driver may stop for up to 2 minutes for passenger drop-off only — canPark is false for general parking.
-- "P" signs (e.g., "1P", "2P", "P 1HR") indicate time-limited parking zones.
-- Yellow "L" signs are Loading Zones — for goods vehicles only; passenger vehicles may stop 1-2 minutes maximum.
-- Red Clearway signs override all other signs during their displayed hours — canPark is false during those hours.
-- Permit zones (e.g., "Permit Holders Excepted 2P Mon-Fri"): a vehicle without a permit is subject to the base time limit.
-- Single-headed arrows point toward the zone they govern. Double-headed arrows mean the sign applies in both directions.
-- Street sweeping is typically indicated by "Council vehicles excepted" with a specific day and time.
-
-NSW parking fines for context (use when setting estimatedFine):
-- No Stopping violation: ~$344
-- No Parking violation: ~$344
-- Clearway violation: ~$344
-- Loading zone violation: ~$344
-- Time limit exceeded: ~$133
-- Expired meter: ~$133
-
-Return your response as a valid JSON object with these exact fields:
-- canPark: boolean (can someone park here RIGHT NOW based on current Sydney time)
-- timeLimit: string or null (e.g., "2 hours", "30 minutes")
-- days: array of active restriction days (e.g., ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
-- hours: string of active restriction hours (e.g., "9:00 AM - 6:00 PM")
-- paymentRequired: boolean
-- vehicleTypes: array (e.g., ["Passenger vehicles"])
-- specialConditions: array of any special rules
-- confidence: number between 0-1
-- rawText: string (exact text visible on the sign)
-- applicableSide: "left" | "right" | "both" | null ("both" if sign is non-directional; null if directionality cannot be determined)
-- estimatedFine: string or null (e.g., "~$133", "~$344" — the fine if the current restriction were violated; null if canPark is true or fine is unclear)
-
-Important: Base canPark on the current Sydney time and day. Be precise about directional arrow interpretation.`;
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Please analyse this parking sign and tell me if I can park here right now. Return only valid JSON with the required fields.',
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: optimizedImage, detail: 'high' },
-                },
-              ],
-            },
-          ],
-          max_tokens: 600,
-          temperature: 0.1,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: optimizedImage, selectedSide }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-
-      let result;
-      try {
-        const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-        result = JSON.parse(cleanContent);
-      } catch (parseError) {
-        console.error('Failed to parse AI response:', content);
-        throw new Error('Invalid response format from AI');
-      }
-
-      const requiredFields = ['canPark', 'confidence', 'rawText'];
-      for (const field of requiredFields) {
-        if (!(field in result)) {
-          throw new Error(`Missing required field: ${field}`);
-        }
-      }
-
-      if (typeof result.confidence !== 'number' || result.confidence < 0 || result.confidence > 1) {
-        result.confidence = 0.5;
-      }
-
-      result.timestamp = new Date().toISOString();
-      result.model = 'gpt-4o';
-
-      return result;
-
-    } catch (error) {
-      console.error('Parking analysis error:', error);
-
-      if (error.message.includes('API key')) {
-        throw error;
-      }
-
-      return {
-        canPark: null,
-        timeLimit: null,
-        days: [],
-        hours: null,
-        paymentRequired: null,
-        vehicleTypes: [],
-        specialConditions: ['Unable to analyse — please check sign manually'],
-        confidence: 0,
-        rawText: 'Error reading sign',
-        applicableSide: null,
-        estimatedFine: null,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      };
+    } catch {
+      // Network error (e.g. running npm start without vercel dev) — use mock.
+      const mock = await this.getMockResponse();
+      return mock;
     }
+
+    // API key not configured server-side → fall back to mock.
+    if (response.status === 503) {
+      const mock = await this.getMockResponse();
+      return mock;
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Analysis failed (${response.status})`);
+    }
+
+    return await response.json();
   }
 
+  // Resize and compress the image before sending to reduce upload size.
   static async optimizeImage(imageData, maxWidth = 1024, quality = 0.8) {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');

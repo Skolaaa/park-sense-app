@@ -21,8 +21,6 @@ const App = () => {
   const [, setSelectedSide] = useState(null);
   const [inAppWarning, setInAppWarning] = useState(false);
 
-  const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
-
   const {
     isRunning: timerRunning,
     remainingMs,
@@ -57,13 +55,11 @@ const App = () => {
 
   // ─── Analysis handlers ───────────────────────────────────────────────────────
 
-  // Called by ImageAnalysis "Analyse" button — routes to side selection first.
   const handleAnalyzeImage = () => {
     setApiError(null);
     setCurrentView(VIEW_STATES.SIDE_SELECTION);
   };
 
-  // Called by SideSelection once the user picks a side (or skips).
   const handleSideSelected = (side) => {
     setSelectedSide(side);
     performAnalysis(side);
@@ -75,13 +71,7 @@ const App = () => {
     setApiError(null);
 
     try {
-      let result;
-      if (hasApiKey) {
-        result = await ParkingAnalysisService.analyzeImage(capturedImage, side);
-      } else {
-        result = await ParkingAnalysisService.getMockResponse();
-        result.isMockData = true;
-      }
+      const result = await ParkingAnalysisService.analyzeImage(capturedImage, side);
 
       // Attach location in the background — don't block the result.
       LocationService.getCurrentAddress().then((location) => {
@@ -95,7 +85,7 @@ const App = () => {
     } catch (error) {
       console.error('Analysis error:', error);
       setApiError(error.message);
-      setCurrentView(error.message.includes('API key') ? VIEW_STATES.HOME : VIEW_STATES.PREVIEW);
+      setCurrentView(VIEW_STATES.PREVIEW);
     } finally {
       setIsAnalyzing(false);
     }
@@ -128,27 +118,7 @@ const App = () => {
 
   // ─── Render helpers ──────────────────────────────────────────────────────────
 
-  const renderApiKeyWarning = () => (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-        <div>
-          <h3 className="font-medium text-yellow-800 mb-1">Demo Mode</h3>
-          <p className="text-sm text-yellow-700 mb-2">
-            Add your OpenAI API key to enable real parking sign analysis.
-          </p>
-          <details className="text-xs text-yellow-600">
-            <summary className="cursor-pointer hover:text-yellow-800">Setup Instructions</summary>
-            <div className="mt-2 space-y-1">
-              <p>1. Get API key from OpenAI Platform</p>
-              <p>2. Create .env file: REACT_APP_OPENAI_API_KEY=your-key</p>
-              <p>3. Restart the app</p>
-            </div>
-          </details>
-        </div>
-      </div>
-    </div>
-  );
+  const isMockResult = !!analysisResult?.isMockData;
 
   const renderErrorMessage = () => {
     if (!apiError) return null;
@@ -158,12 +128,7 @@ const App = () => {
           <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
           <div>
             <h3 className="font-medium text-red-800 mb-1">Analysis Failed</h3>
-            <p className="text-sm text-red-700 mb-2">{apiError}</p>
-            {apiError.includes('API key') && (
-              <p className="text-xs text-red-600">
-                Add your OpenAI API key to the .env file and restart the app.
-              </p>
-            )}
+            <p className="text-sm text-red-700">{apiError}</p>
           </div>
         </div>
       </div>
@@ -182,22 +147,15 @@ const App = () => {
           Take a photo of any parking sign and get instant interpretation with AI-powered analysis
         </p>
 
-        <div className="mt-6">
-          {hasApiKey ? (
-            <div className="flex items-center justify-center gap-2 text-green-600 text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Real AI Analysis Enabled</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 text-yellow-600 text-sm">
-              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span>Demo Mode — Mock Data</span>
-            </div>
-          )}
-        </div>
+        {/* Show demo mode indicator only after a mock result has been returned */}
+        {isMockResult && (
+          <div className="mt-6 flex items-center justify-center gap-2 text-yellow-600 text-sm">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+            <span>Demo Mode — Mock Data</span>
+          </div>
+        )}
 
         {renderErrorMessage()}
-        {!hasApiKey && renderApiKeyWarning()}
 
         <div className="mt-8 space-y-3 text-sm text-gray-600">
           <div className="flex items-center justify-center gap-2">
@@ -224,12 +182,7 @@ const App = () => {
       </button>
 
       <div className="mt-8 text-xs text-gray-400 text-center">
-        <div>Version {APP_CONFIG.version} — Sydney Parking</div>
-        {hasApiKey ? (
-          <div className="text-green-500">OpenAI GPT-4o Integration Active</div>
-        ) : (
-          <div className="text-yellow-500">Mock Data Mode</div>
-        )}
+        Version {APP_CONFIG.version} — Sydney Parking
       </div>
     </div>
   );
@@ -275,7 +228,7 @@ const App = () => {
           <ResultsDisplay
             analysisResult={analysisResult}
             onAnalyzeAnother={handleAnalyzeAnother}
-            showMockWarning={!hasApiKey}
+            showMockWarning={isMockResult}
             onStartTimer={handleStartTimer}
             onStopTimer={handleStopTimer}
             onViewTimer={handleViewTimer}
