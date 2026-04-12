@@ -18,8 +18,7 @@ const App = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [apiError, setApiError] = useState(null);
-  const [selectedSide, setSelectedSide] = useState(null);
-  const [notificationPermission, setNotificationPermission] = useState(null);
+  const [, setSelectedSide] = useState(null);
   const [inAppWarning, setInAppWarning] = useState(false);
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
@@ -114,7 +113,6 @@ const App = () => {
 
   const handleStartTimer = async (durationMs) => {
     const permission = await NotificationService.requestPermission();
-    setNotificationPermission(permission);
     if (permission !== 'granted') setInAppWarning(true);
     startTimer(durationMs);
     NotificationService.scheduleWarning(durationMs);
