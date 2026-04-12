@@ -9,7 +9,28 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   const [showTips, setShowTips] = useState(true);
 
   useEffect(() => {
+    const stopCamera = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    };
+
     if (isActive) {
+      const startCamera = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONFIG);
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            streamRef.current = stream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          alert('Unable to access camera. Please ensure you have granted camera permissions.');
+          onCancel();
+        }
+      };
+
       startCamera();
       // Auto-hide the tips overlay after 3 seconds.
       const timer = setTimeout(() => setShowTips(false), 3000);
@@ -20,21 +41,7 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
     } else {
       stopCamera();
     }
-  }, [isActive]);
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(CAMERA_CONFIG);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      alert('Unable to access camera. Please ensure you have granted camera permissions.');
-      onCancel();
-    }
-  };
+  }, [isActive, onCancel]);
 
   const stopCamera = () => {
     if (streamRef.current) {
