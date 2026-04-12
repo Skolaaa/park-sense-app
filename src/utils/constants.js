@@ -23,6 +23,13 @@ export const VIEW_STATES = {
   HOME: 'home',
   CAMERA: 'camera',
   PREVIEW: 'preview',
+  SIDE_SELECTION: 'side_selection',
   ANALYZING: 'analyzing',
-  RESULTS: 'results'
+  RESULTS: 'results',
+  TIMER: 'timer',
+};
+
+export const TIMER_CONFIG = {
+  STORAGE_KEY: 'parksense_timer',
+  WARNING_THRESHOLD_MS: 15 * 60 * 1000,
 };

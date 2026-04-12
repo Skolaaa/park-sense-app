@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
-import { Camera, Car, AlertTriangle, Settings } from 'lucide-react';
+import { Camera, Car, AlertTriangle } from 'lucide-react';
 import CameraCapture from './components/CameraCapture';
 import ImageAnalysis from './components/ImageAnalysis';
 import ResultsDisplay from './components/ResultsDisplay';
+import SideSelection from './components/SideSelection';
+import ParkingTimer from './components/ParkingTimer';
+import NotificationBanner from './components/NotificationBanner';
 import { ParkingAnalysisService } from './services/parkingAnalysis';
+import { LocationService } from './services/locationService';
+import { NotificationService } from './services/notificationService';
+import { useTimer } from './hooks/useTimer';
 import { VIEW_STATES, APP_CONFIG } from './utils/constants';
 
 const App = () => {
@@ -12,65 +18,32 @@ const App = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [selectedSide, setSelectedSide] = useState(null);
+  const [notificationPermission, setNotificationPermission] = useState(null);
+  const [inAppWarning, setInAppWarning] = useState(false);
 
-  // Check if OpenAI API key is configured
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
-  // DEBUG FUNCTION - Test API Key
-  const testApiKey = async () => {
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-    console.log('=== API KEY DEBUG ===');
-    console.log('API Key exists:', !!apiKey);
-    console.log('API Key starts with sk-:', apiKey?.startsWith('sk-'));
-    console.log('API Key length:', apiKey?.length);
-    
-    if (!apiKey) {
-      console.error('❌ No API key found!');
-      alert('❌ No API key detected. Check your .env file:\n\n1. Create .env file in project root\n2. Add: REACT_APP_OPENAI_API_KEY=sk-your-key\n3. Restart app');
-      return;
-    }
-    
-    if (!apiKey.startsWith('sk-')) {
-      console.error('❌ Invalid API key format!');
-      alert('❌ API key should start with "sk-"\nCheck your .env file format.');
-      return;
-    }
-    
-    // Test API call
-    try {
-      console.log('🧪 Testing API call...');
-      alert('🧪 Testing API connection...');
-      
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ API key is valid!', data);
-        alert('✅ SUCCESS! API key is working perfectly!\n\nYou can now analyze real parking signs with AI.');
-      } else {
-        const error = await response.json();
-        console.error('❌ API call failed:', error);
-        alert(`❌ API Error: ${error.error?.message || 'Unknown error'}\n\nCheck your API key and billing status.`);
-      }
-    } catch (error) {
-      console.error('❌ Network error:', error);
-      alert('❌ Network error. Check your internet connection.');
-    }
-  };
+  const {
+    isRunning: timerRunning,
+    remainingMs,
+    totalMs,
+    formattedTime: timerFormattedTime,
+    percentRemaining,
+    isWarningPhase,
+    startTimer,
+    stopTimer,
+  } = useTimer();
+
+  // ─── Camera handlers ────────────────────────────────────────────────────────
 
   const handleCameraCapture = (imageData) => {
     setCapturedImage(imageData);
-    setApiError(null); // Clear any previous errors
+    setApiError(null);
     setCurrentView(VIEW_STATES.PREVIEW);
   };
 
-  const handleCameraCancel = () => {
-    setCurrentView(VIEW_STATES.HOME);
-  };
+  const handleCameraCancel = () => setCurrentView(VIEW_STATES.HOME);
 
   const handleRetakePhoto = () => {
     setCapturedImage(null);
@@ -78,35 +51,52 @@ const App = () => {
     setCurrentView(VIEW_STATES.CAMERA);
   };
 
-  const handleAnalyzeImage = async () => {
+  const handleStartCamera = () => {
+    setApiError(null);
+    setCurrentView(VIEW_STATES.CAMERA);
+  };
+
+  // ─── Analysis handlers ───────────────────────────────────────────────────────
+
+  // Called by ImageAnalysis "Analyse" button — routes to side selection first.
+  const handleAnalyzeImage = () => {
+    setApiError(null);
+    setCurrentView(VIEW_STATES.SIDE_SELECTION);
+  };
+
+  // Called by SideSelection once the user picks a side (or skips).
+  const handleSideSelected = (side) => {
+    setSelectedSide(side);
+    performAnalysis(side);
+  };
+
+  const performAnalysis = async (side) => {
     setIsAnalyzing(true);
     setCurrentView(VIEW_STATES.ANALYZING);
     setApiError(null);
-    
+
     try {
       let result;
-      
       if (hasApiKey) {
-        // Use real OpenAI API
-        result = await ParkingAnalysisService.analyzeImage(capturedImage);
+        result = await ParkingAnalysisService.analyzeImage(capturedImage, side);
       } else {
-        // Use mock data with warning
         result = await ParkingAnalysisService.getMockResponse();
         result.isMockData = true;
       }
-      
+
+      // Attach location in the background — don't block the result.
+      LocationService.getCurrentAddress().then((location) => {
+        if (location) {
+          setAnalysisResult((prev) => prev ? { ...prev, location } : { ...result, location });
+        }
+      });
+
       setAnalysisResult(result);
       setCurrentView(VIEW_STATES.RESULTS);
     } catch (error) {
       console.error('Analysis error:', error);
       setApiError(error.message);
-      
-      // Show error but allow retry
-      if (error.message.includes('API key')) {
-        setCurrentView(VIEW_STATES.HOME);
-      } else {
-        setCurrentView(VIEW_STATES.PREVIEW);
-      }
+      setCurrentView(error.message.includes('API key') ? VIEW_STATES.HOME : VIEW_STATES.PREVIEW);
     } finally {
       setIsAnalyzing(false);
     }
@@ -116,13 +106,29 @@ const App = () => {
     setCapturedImage(null);
     setAnalysisResult(null);
     setApiError(null);
+    setSelectedSide(null);
     setCurrentView(VIEW_STATES.HOME);
   };
 
-  const handleStartCamera = () => {
-    setApiError(null);
-    setCurrentView(VIEW_STATES.CAMERA);
+  // ─── Timer handlers ──────────────────────────────────────────────────────────
+
+  const handleStartTimer = async (durationMs) => {
+    const permission = await NotificationService.requestPermission();
+    setNotificationPermission(permission);
+    if (permission !== 'granted') setInAppWarning(true);
+    startTimer(durationMs);
+    NotificationService.scheduleWarning(durationMs);
   };
+
+  const handleStopTimer = () => {
+    stopTimer();
+    NotificationService.cancelScheduled();
+    setInAppWarning(false);
+  };
+
+  const handleViewTimer = () => setCurrentView(VIEW_STATES.TIMER);
+
+  // ─── Render helpers ──────────────────────────────────────────────────────────
 
   const renderApiKeyWarning = () => (
     <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
@@ -148,7 +154,6 @@ const App = () => {
 
   const renderErrorMessage = () => {
     if (!apiError) return null;
-
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
         <div className="flex items-start gap-3">
@@ -178,8 +183,7 @@ const App = () => {
         <p className="text-gray-500 max-w-sm mx-auto">
           Take a photo of any parking sign and get instant interpretation with AI-powered analysis
         </p>
-        
-        {/* API Status */}
+
         <div className="mt-6">
           {hasApiKey ? (
             <div className="flex items-center justify-center gap-2 text-green-600 text-sm">
@@ -189,18 +193,14 @@ const App = () => {
           ) : (
             <div className="flex items-center justify-center gap-2 text-yellow-600 text-sm">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span>Demo Mode - Mock Data</span>
+              <span>Demo Mode — Mock Data</span>
             </div>
           )}
         </div>
 
-        {/* Error Message */}
         {renderErrorMessage()}
-
-        {/* API Key Warning */}
         {!hasApiKey && renderApiKeyWarning()}
-        
-        {/* Features Preview */}
+
         <div className="mt-8 space-y-3 text-sm text-gray-600">
           <div className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -208,16 +208,15 @@ const App = () => {
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span>Time & payment rules</span>
+            <span>Time &amp; payment rules</span>
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span>Smart recommendations</span>
+            <span>Parking timer with alerts</span>
           </div>
         </div>
       </div>
-      
-      {/* Main Action Button */}
+
       <button
         onClick={handleStartCamera}
         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl flex items-center gap-3 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -226,19 +225,10 @@ const App = () => {
         Take Photo of Parking Sign
       </button>
 
-      {/* DEBUG BUTTON - Test API Key */}
-      <button
-        onClick={testApiKey}
-        className="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg text-sm flex items-center gap-2 transition-colors"
-      >
-        🧪 Test API Key
-      </button>
-      
-      {/* Version info */}
       <div className="mt-8 text-xs text-gray-400 text-center">
-        <div>Version {APP_CONFIG.version} - Phase 1 MVP</div>
+        <div>Version {APP_CONFIG.version} — Sydney Parking</div>
         {hasApiKey ? (
-          <div className="text-green-500">OpenAI GPT-4V Integration Active</div>
+          <div className="text-green-500">OpenAI GPT-4o Integration Active</div>
         ) : (
           <div className="text-yellow-500">Mock Data Mode</div>
         )}
@@ -246,12 +236,13 @@ const App = () => {
     </div>
   );
 
-  // Render the appropriate view
+  // ─── View router ─────────────────────────────────────────────────────────────
+
   const renderCurrentView = () => {
     switch (currentView) {
       case VIEW_STATES.HOME:
         return renderHomeScreen();
-        
+
       case VIEW_STATES.CAMERA:
         return (
           <CameraCapture
@@ -260,7 +251,7 @@ const App = () => {
             isActive={true}
           />
         );
-        
+
       case VIEW_STATES.PREVIEW:
       case VIEW_STATES.ANALYZING:
         return (
@@ -271,16 +262,45 @@ const App = () => {
             isAnalyzing={isAnalyzing}
           />
         );
-        
+
+      case VIEW_STATES.SIDE_SELECTION:
+        return (
+          <SideSelection
+            capturedImage={capturedImage}
+            onSelectSide={handleSideSelected}
+            onBack={() => setCurrentView(VIEW_STATES.PREVIEW)}
+          />
+        );
+
       case VIEW_STATES.RESULTS:
         return (
           <ResultsDisplay
             analysisResult={analysisResult}
             onAnalyzeAnother={handleAnalyzeAnother}
             showMockWarning={!hasApiKey}
+            onStartTimer={handleStartTimer}
+            onStopTimer={handleStopTimer}
+            onViewTimer={handleViewTimer}
+            timerRunning={timerRunning}
+            timerFormattedTime={timerFormattedTime}
+            timerWarningPhase={isWarningPhase}
           />
         );
-        
+
+      case VIEW_STATES.TIMER:
+        return (
+          <ParkingTimer
+            remainingMs={remainingMs}
+            totalMs={totalMs}
+            formattedTime={timerFormattedTime}
+            percentRemaining={percentRemaining}
+            isWarningPhase={isWarningPhase}
+            onStop={handleStopTimer}
+            onBack={() => setCurrentView(VIEW_STATES.RESULTS)}
+            analysisResult={analysisResult}
+          />
+        );
+
       default:
         return renderHomeScreen();
     }
@@ -288,6 +308,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen">
+      {inAppWarning && (
+        <NotificationBanner onDismiss={() => setInAppWarning(false)} />
+      )}
       {renderCurrentView()}
     </div>
   );
