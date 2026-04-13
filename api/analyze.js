@@ -90,7 +90,7 @@ Important: Base canPark on the current Sydney time and day. Be precise about dir
             ],
           },
         ],
-        max_tokens: 600,
+        max_tokens: 800,
         temperature: 0.1,
       }),
     });
@@ -105,10 +105,20 @@ Important: Base canPark on the current Sydney time and day. Be precise about dir
 
     let result;
     try {
-      const clean = content.replace(/```json\n?|\n?```/g, '').trim();
-      result = JSON.parse(clean);
+      // Strip markdown code fences if present, then try direct parse.
+      let clean = content.replace(/```json\n?|\n?```/g, '').trim();
+      try {
+        result = JSON.parse(clean);
+      } catch {
+        // Fallback: extract the first {...} block in case the model added
+        // explanatory text before or after the JSON.
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('no_json_block');
+        result = JSON.parse(match[0]);
+      }
     } catch {
-      return res.status(502).json({ error: 'parse_error' });
+      console.error('[ParkSense] Failed to parse OpenAI response:', content);
+      return res.status(502).json({ error: 'parse_error', detail: content.slice(0, 200) });
     }
 
     // Validate required fields

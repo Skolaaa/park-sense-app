@@ -27,7 +27,10 @@ export class ParkingAnalysisService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Analysis failed (${response.status})`);
+      const msg = errorData.detail
+        ? `${errorData.error}: ${errorData.detail}`
+        : errorData.error || `Analysis failed (${response.status})`;
+      throw new Error(msg);
     }
 
     return await response.json();
