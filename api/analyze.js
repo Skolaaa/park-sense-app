@@ -51,6 +51,7 @@ NSW parking fines for context (use when setting estimatedFine):
 - Expired meter: ~$133
 
 Return your response as a valid JSON object with these exact fields:
+- noSignFound: boolean — set to TRUE if no parking sign is visible or legible in the image (e.g. blank wall, road, sky, unrelated object). When true, all other fields should be null/false/empty.
 - canPark: boolean (can someone park here RIGHT NOW based on current Sydney time)
 - timeLimit: string or null (e.g., "2 hours", "30 minutes")
 - days: array of active restriction days (e.g., ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
@@ -58,10 +59,10 @@ Return your response as a valid JSON object with these exact fields:
 - paymentRequired: boolean
 - vehicleTypes: array (e.g., ["Passenger vehicles"])
 - specialConditions: array of any special rules
-- confidence: number between 0-1
-- rawText: string (exact text visible on the sign)
-- applicableSide: "left" | "right" | "both" | null ("both" if sign is non-directional; null if directionality cannot be determined)
-- estimatedFine: string or null (e.g., "~$133", "~$344" — the fine if the current restriction were violated; null if canPark is true or fine is unclear)
+- confidence: number between 0-1 (set to 0 when noSignFound is true)
+- rawText: string (exact text visible on the sign; empty string if noSignFound is true)
+- applicableSide: "left" | "right" | "both" | null
+- estimatedFine: string or null
 
 Important: Base canPark on the current Sydney time and day. Be precise about directional arrow interpretation.`;
 

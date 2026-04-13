@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   CheckCircle, XCircle, Clock, DollarSign, Car, AlertTriangle,
-  RotateCcw, Timer, MapPin, AlertOctagon,
+  RotateCcw, Timer, MapPin, AlertOctagon, Camera,
 } from 'lucide-react';
 import { parseTimeLimit } from '../utils/timeParser';
 import TimerOverlay from './TimerOverlay';
@@ -20,6 +20,7 @@ const ResultsDisplay = ({
   if (!analysisResult) return null;
 
   const {
+    noSignFound,
     canPark,
     timeLimit,
     days,
@@ -38,15 +39,22 @@ const ResultsDisplay = ({
   const canShowTimer = canPark && timeLimit && parsedDurationMs;
 
   const getConfidenceColor = (score) => {
-    if (score > 0.9) return 'text-green-600';
-    if (score > 0.6) return 'text-yellow-600';
+    if (score >= 0.85) return 'text-green-600';
+    if (score >= 0.65) return 'text-yellow-600';
     return 'text-red-600';
   };
 
+  const getConfidenceBarColor = (score) => {
+    if (score >= 0.85) return 'bg-green-500';
+    if (score >= 0.65) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
   const getConfidenceText = (score) => {
-    if (score > 0.9) return 'High Confidence';
-    if (score > 0.6) return 'Medium Confidence';
-    return 'Low Confidence — Please Verify';
+    if (score >= 0.85) return 'Sign clearly read — result is reliable';
+    if (score >= 0.65) return 'Sign partially read — verify key details before parking';
+    if (score > 0)     return 'Sign unclear — retake for a reliable result';
+    return 'Unable to read sign';
   };
 
   const sideLabel = applicableSide === 'left' ? 'LEFT'
@@ -72,15 +80,38 @@ const ResultsDisplay = ({
           </div>
         )}
 
-        {/* Low confidence hint */}
-        {confidence < 0.6 && confidence > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        {/* No sign found — show a dedicated prompt and stop rendering further */}
+        {noSignFound && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-5">
+              <Camera className="w-10 h-10 text-orange-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">No Parking Sign Detected</h2>
+            <p className="text-gray-500 text-sm max-w-xs mb-8">
+              Make sure the parking sign fills the frame and the text is clearly visible, then try again.
+            </p>
+            <button
+              onClick={onAnalyzeAnother}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-xl flex items-center gap-2 transition-colors shadow"
+            >
+              <RotateCcw className="w-5 h-5" />
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* All remaining content only renders when a sign was found */}
+        {!noSignFound && <>
+
+        {/* Low confidence banner — only for scores in the uncertain range */}
+        {confidence > 0 && confidence < 0.65 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-yellow-800">Low confidence result</p>
-                <p className="text-sm text-yellow-700">
-                  Consider retaking the photo — fill the frame with the sign and ensure the text is clearly readable.
+                <p className="text-sm font-medium text-orange-800">Sign unclear — retake for a reliable result</p>
+                <p className="text-sm text-orange-700 mt-0.5">
+                  Fill the frame with the sign, hold steady, and ensure all text is readable.
                 </p>
               </div>
             </div>
@@ -223,10 +254,7 @@ const ResultsDisplay = ({
             </div>
             <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
               <div
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  confidence > 0.9 ? 'bg-green-500' :
-                  confidence > 0.6 ? 'bg-yellow-500' : 'bg-red-500'
-                }`}
+                className={`h-2 rounded-full transition-all duration-500 ${getConfidenceBarColor(confidence)}`}
                 style={{ width: `${confidence * 100}%` }}
               />
             </div>
@@ -269,6 +297,8 @@ const ResultsDisplay = ({
             Analyse Another Sign
           </button>
         </div>
+
+        </>} {/* end !noSignFound */}
       </div>
 
       {/* Sticky timer overlay */}
