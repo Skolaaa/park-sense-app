@@ -3,6 +3,6 @@
   "outputDirectory": "build",
   "devCommand": "react-scripts start",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

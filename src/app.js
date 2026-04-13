@@ -211,6 +211,7 @@ const App = () => {
             onAnalyze={handleAnalyzeImage}
             onRetake={handleRetakePhoto}
             isAnalyzing={isAnalyzing}
+            error={apiError}
           />
         );
 

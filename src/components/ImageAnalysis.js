@@ -1,12 +1,13 @@
 import React from 'react';
 import { RotateCcw, Camera } from 'lucide-react';
 
-const ImageAnalysis = ({ 
-  capturedImage, 
-  onAnalyze, 
-  onRetake, 
-  isAnalyzing, 
-  analysisProgress = 70 
+const ImageAnalysis = ({
+  capturedImage,
+  onAnalyze,
+  onRetake,
+  isAnalyzing,
+  error = null,
+  analysisProgress = 70
 }) => {
   const renderPreview = () => (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -18,7 +19,14 @@ const ImageAnalysis = ({
             className="w-full h-64 object-cover"
           />
         </div>
-        
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <p className="text-sm font-medium text-red-800 mb-1">Analysis failed</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <div className="space-y-4">
           <button
             onClick={onAnalyze}
