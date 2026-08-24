@@ -1,6 +1,19 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, XCircle, AlertTriangle } from 'lucide-react';
+import { Camera, X } from 'lucide-react';
 import { CAMERA_CONFIG } from '../utils/constants';
+
+// Copy is split by cause: a denied permission is a thing the user can fix, and
+// telling them exactly where to fix it beats a generic apology.
+const ERROR_COPY = {
+  denied: {
+    heading: ['Camera access', 'is switched off'],
+    body: 'Open the settings for this site in your browser and set Camera to Allow, then come back and try again.',
+  },
+  unavailable: {
+    heading: ['Camera is', 'not available'],
+    body: 'Another app may be holding the camera. Close anything else using it, then try again.',
+  },
+};
 
 const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   const videoRef = useRef(null);
@@ -12,7 +25,7 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   useEffect(() => {
     const stopCamera = () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
     };
@@ -26,11 +39,8 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
             streamRef.current = stream;
           }
         } catch (error) {
-          console.error('Error accessing camera:', error);
-          const msg = error.name === 'NotAllowedError'
-            ? 'Camera access was denied. Please enable camera permissions in your browser settings and try again.'
-            : 'Unable to access the camera. Please check your device and try again.';
-          setCameraError(msg);
+          console.error('[ParkSense] Error accessing camera:', error);
+          setCameraError(error.name === 'NotAllowedError' ? 'denied' : 'unavailable');
         }
       };
 
@@ -62,7 +72,7 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
 
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
       onCapture(imageData);
@@ -72,68 +82,84 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   if (!isActive) return null;
 
   if (cameraError) {
+    const copy = ERROR_COPY[cameraError] ?? ERROR_COPY.unavailable;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-6 text-center">
-        <div className="w-16 h-16 bg-red-900 rounded-full flex items-center justify-center mb-4">
-          <AlertTriangle className="w-8 h-8 text-red-400" />
+      <div className="flex min-h-screen flex-col bg-ground">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
+          <div className="flex flex-1 flex-col justify-center py-12">
+            <div className="border-l-4 border-deny pl-4">
+              <p className="kicker text-deny">Camera blocked</p>
+              <h1 className="mt-2 font-display text-verdict-sm uppercase">
+                {copy.heading[0]}{' '}
+                <br />
+                {copy.heading[1]}
+              </h1>
+            </div>
+            <p className="mt-5 max-w-[34ch] text-[13px] leading-relaxed text-dim">{copy.body}</p>
+          </div>
+          <div className="pb-safe pb-6">
+            <button onClick={onCancel} className="btn-quiet h-[46px] text-[13px]">
+              Back
+            </button>
+          </div>
         </div>
-        <h2 className="text-white text-xl font-semibold mb-3">Camera Unavailable</h2>
-        <p className="text-gray-400 text-sm max-w-xs mb-8">{cameraError}</p>
-        <button
-          onClick={onCancel}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors"
-        >
-          Go Back
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="relative h-screen bg-black">
+    <div className="relative min-h-screen bg-black">
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        className="w-full h-full object-cover"
+        muted
+        className="h-screen w-full object-cover"
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Photo quality tips overlay — auto-hides after 3s */}
+      {/* Framing guide — the single most common cause of a bad read is a sign
+          that does not fill the frame. */}
+      <div
+        className="pointer-events-none absolute inset-x-8 top-1/2 aspect-[4/3] -translate-y-1/2 border border-white/40"
+        aria-hidden="true"
+      />
+
+      <div className="pt-safe absolute inset-x-0 top-0 p-5">
+        <p className="text-center font-mono text-[10px] uppercase tracking-[0.17em] text-white/70">
+          Fill the frame with the sign
+        </p>
+      </div>
+
       {showTips && (
-        <div className="absolute top-16 left-4 right-4">
-          <div className="bg-black bg-opacity-70 text-white p-4 rounded-xl text-sm space-y-1.5">
-            <p className="font-semibold text-blue-300 mb-2">Tips for best results</p>
-            <p>• Fill the frame with the sign</p>
-            <p>• Hold steady — use both hands</p>
-            <p>• Include any directional arrows</p>
-            <p>• Ensure text is clearly readable</p>
-          </div>
+        <div className="absolute inset-x-5 top-16 bg-black/70 p-4 backdrop-blur-sm">
+          <p className="kicker mb-2 text-signal">For a clean read</p>
+          <ul className="grid gap-1 text-[13px] leading-snug text-white/80">
+            <li>Fill the frame with the sign</li>
+            <li>Hold steady, both hands</li>
+            <li>Include the directional arrows</li>
+          </ul>
         </div>
       )}
 
-      {/* Instruction bar */}
-      <div className="absolute top-4 left-4 right-4">
-        <div className="bg-black bg-opacity-50 text-white p-3 rounded-lg text-center">
-          <p className="text-sm">Position the parking sign in the frame</p>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
+      <div className="pb-safe absolute inset-x-0 bottom-0 flex items-center justify-between px-8 pb-10">
         <button
           onClick={onCancel}
-          className="bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-full transition-colors"
+          aria-label="Cancel"
+          className="p-3 text-white/70 transition-transform duration-150 ease-out active:scale-[0.98]"
         >
-          <XCircle className="w-6 h-6" />
+          <X className="h-6 w-6" aria-hidden="true" />
         </button>
 
         <button
           onClick={capturePhoto}
-          className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full transition-colors shadow-lg"
+          aria-label="Capture photo of the parking sign"
+          className="flex h-[76px] w-[76px] items-center justify-center rounded-full bg-signal text-signal-ink transition-transform duration-150 ease-out active:scale-95"
         >
-          <Camera className="w-8 h-8" />
+          <Camera className="h-7 w-7" aria-hidden="true" />
         </button>
+
+        <span className="w-12" aria-hidden="true" />
       </div>
     </div>
   );

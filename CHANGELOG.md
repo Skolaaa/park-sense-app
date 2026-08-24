@@ -18,6 +18,16 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
   on every pull request and push to main.
 
 ### Changed
+- Redesigned every screen. The verdict — whether you can park — is now the
+  only loud thing on screen, sized to be read at arm's length on a bright
+  street, with the detail below it as a plain spec list. Replaces a layout
+  that spread six competing accent colours across seven pastel cards.
+- A weak read no longer shows a confident-looking result behind a warning
+  banner. When the sign is only partly legible the app says so, shows what it
+  could read, and asks you to retake — with the result still available if you
+  want it.
+- Camera errors tell you what to do. A denied permission is now distinguished
+  from a busy camera, each with its own instruction.
 - Styling is now compiled at build time instead of being generated in the
   browser by the Tailwind CDN script. The app no longer waits on a
   third-party request before it can paint, and it renders correctly with no
@@ -31,6 +41,13 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
   unreadable image now says so and offers a retake.
 - The version shown on the home screen matches the released version. It had
   been stuck at 1.0.0 since the first commit.
+- Buttons respond to a press. The only feedback was a hover effect, which
+  phones do not have and which latched on after a tap.
+- Headings that break across two lines are no longer announced as one run-on
+  word by screen readers.
+- Keyboard focus is visible. It had no indicator anywhere in the app.
+- The safe-area padding on the timer bar and notification banner now applies;
+  both referenced CSS classes that were never defined.
 
 ## [0.5.0] — 2026-08-24
 

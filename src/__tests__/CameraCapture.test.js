@@ -38,8 +38,8 @@ describe('CameraCapture', () => {
 
     render(<CameraCapture onCapture={() => {}} onCancel={() => {}} isActive={true} />);
 
-    expect(await screen.findByText('Camera Unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/enable camera permissions/i)).toBeInTheDocument();
+    expect(await screen.findByText(/is switched off/i)).toBeInTheDocument();
+    expect(screen.getByText(/set Camera to Allow/i)).toBeInTheDocument();
     console.error.mockRestore();
   });
 
@@ -51,7 +51,8 @@ describe('CameraCapture', () => {
 
     render(<CameraCapture onCapture={() => {}} onCancel={() => {}} isActive={true} />);
 
-    expect(await screen.findByText(/check your device/i)).toBeInTheDocument();
+    expect(await screen.findByText(/not available/i)).toBeInTheDocument();
+    expect(screen.getByText(/holding the camera/i)).toBeInTheDocument();
     console.error.mockRestore();
   });
 

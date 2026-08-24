@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, Car, AlertTriangle } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import CameraCapture from './components/CameraCapture';
 import ImageAnalysis from './components/ImageAnalysis';
 import ResultsDisplay from './components/ResultsDisplay';
@@ -123,69 +123,72 @@ const App = () => {
   const renderErrorMessage = () => {
     if (!apiError) return null;
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-red-800 mb-1">Analysis Failed</h3>
-            <p className="text-sm text-red-700">{apiError}</p>
-          </div>
-        </div>
+      <div className="mb-5 border-l-4 border-deny bg-panel px-4 py-3">
+        <p className="kicker text-deny">Analysis failed</p>
+        <p className="mt-1.5 text-[13px] leading-snug text-ink">{apiError}</p>
       </div>
     );
   };
 
   const renderHomeScreen = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="text-center mb-8 max-w-md">
-        <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-6 mx-auto shadow-lg">
-          <Car className="w-12 h-12 text-white" />
+    <div className="flex min-h-screen flex-col bg-ground">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
+        <header className="pt-safe pt-10">
+          <p className="kicker">Kerbside reader · Sydney</p>
+          <h1 className="mt-3 font-display text-verdict-sm uppercase">
+            Point it{' '}
+            <br />
+            at the sign
+          </h1>
+          <p className="mt-4 max-w-[32ch] text-[13px] leading-relaxed text-dim">
+            Reads NSW plates, applies the current Sydney time and the arrow
+            rules, then answers the only question that matters.
+          </p>
+        </header>
+
+        <div className="mt-auto pb-safe pb-6">
+          {renderErrorMessage()}
+
+          {isMockResult && (
+            <p className="kicker mb-4 text-caution">Demo data — no API key configured</p>
+          )}
+
+          <div className="mb-4 h-px bg-rule" />
+
+          {timerRunning ? (
+            <button
+              onClick={handleViewTimer}
+              className="mb-4 w-full border border-rule bg-panel px-4 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.98]"
+            >
+              <div className="flex items-baseline justify-between">
+                <span className="kicker">Running timer</span>
+                <span
+                  className={`font-mono text-base ${isWarningPhase ? 'text-caution' : 'text-signal'}`}
+                >
+                  {timerFormattedTime}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-dim">
+                {isWarningPhase ? 'Expiring soon — move the car' : 'Tap to view'}
+              </p>
+            </button>
+          ) : (
+            <p className="mb-4 text-xs text-faint">No timer running.</p>
+          )}
+
+          <button onClick={handleStartCamera} className="btn-signal h-[52px]">
+            <Camera className="h-5 w-5" aria-hidden="true" />
+            Scan a sign
+          </button>
+
+          <p className="mt-5 text-center font-mono text-[10px] uppercase tracking-wider text-faint">
+            v{APP_CONFIG.version} · Sydney parking
+          </p>
         </div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">{APP_CONFIG.name}</h1>
-        <p className="text-gray-600 text-xl mb-2">{APP_CONFIG.description}</p>
-        <p className="text-gray-500 max-w-sm mx-auto">
-          Take a photo of any parking sign and get instant interpretation with AI-powered analysis
-        </p>
-
-        {/* Show demo mode indicator only after a mock result has been returned */}
-        {isMockResult && (
-          <div className="mt-6 flex items-center justify-center gap-2 text-yellow-600 text-sm">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            <span>Demo Mode — Mock Data</span>
-          </div>
-        )}
-
-        {renderErrorMessage()}
-
-        <div className="mt-8 space-y-3 text-sm text-gray-600">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>Instant sign recognition</span>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span>Time &amp; payment rules</span>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span>Parking timer with alerts</span>
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={handleStartCamera}
-        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl flex items-center gap-3 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-      >
-        <Camera className="w-6 h-6" />
-        Take Photo of Parking Sign
-      </button>
-
-      <div className="mt-8 text-xs text-gray-400 text-center">
-        Version {APP_CONFIG.version} — Sydney Parking
       </div>
     </div>
   );
+
 
   // ─── View router ─────────────────────────────────────────────────────────────
 

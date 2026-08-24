@@ -1,19 +1,27 @@
 import React from 'react';
-import { BellOff, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
+// Shown when the browser refused notification permission, so the expiry
+// warning can only reach the user while the app is on screen. Caution, not
+// deny: nothing has gone wrong yet, but the safety net is thinner.
 const NotificationBanner = ({ onDismiss }) => (
-  <div className="fixed top-0 left-0 right-0 z-50 bg-gray-800 text-white px-4 py-3 flex items-center justify-between gap-3 safe-area-top">
-    <div className="flex items-center gap-2 text-sm">
-      <BellOff className="w-4 h-4 shrink-0 text-gray-400" />
-      <span>Notifications blocked — we'll show an in-app alert at 15 minutes.</span>
+  <div className="pt-safe fixed inset-x-0 top-0 z-50 border-b border-rule bg-panel shadow-field">
+    <div className="mx-auto flex w-full max-w-md items-start gap-3 border-l-4 border-caution px-4 py-3">
+      <div className="flex-1">
+        <p className="kicker text-caution">Notifications blocked</p>
+        <p className="mt-1.5 text-[13px] leading-snug text-ink">
+          The 15-minute warning can only reach you while this app is open. Allow
+          notifications in your browser settings to be told in the background.
+        </p>
+      </div>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="-mr-2 -mt-1 shrink-0 p-2 text-dim transition-transform duration-150 ease-out active:scale-[0.9] hover:text-ink"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+      </button>
     </div>
-    <button
-      onClick={onDismiss}
-      className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors shrink-0"
-      aria-label="Dismiss"
-    >
-      <X className="w-4 h-4" />
-    </button>
   </div>
 );
 

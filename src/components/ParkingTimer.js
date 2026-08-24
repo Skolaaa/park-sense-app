@@ -1,8 +1,14 @@
 import React from 'react';
-import { ChevronLeft, Square } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { TIMER_CONFIG } from '../utils/constants';
 
-const RADIUS = 80;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const clockAt = (ms) =>
+  new Date(ms).toLocaleTimeString('en-AU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Australia/Sydney',
+  });
 
 const ParkingTimer = ({
   remainingMs,
@@ -15,128 +21,111 @@ const ParkingTimer = ({
   analysisResult,
 }) => {
   const isExpired = remainingMs <= 0 && totalMs > 0;
-  const strokeDashoffset = CIRCUMFERENCE * (1 - percentRemaining / 100);
 
-  const ringColor = isExpired
-    ? '#ef4444'
-    : isWarningPhase
-    ? '#f59e0b'
-    : '#2563eb';
+  // Absolute times answer "when do I need to be back" better than a countdown
+  // alone, which is useless the moment the phone goes in a pocket.
+  const now = Date.now();
+  const startedAt = now - (totalMs - remainingMs);
+  const expiresAt = now + Math.max(remainingMs, 0);
+  const warnAt = expiresAt - TIMER_CONFIG.WARNING_THRESHOLD_MS;
 
-  const bgClass = isExpired
-    ? 'bg-red-50'
-    : isWarningPhase
-    ? 'bg-amber-50'
-    : 'bg-gray-50';
+  const tone = isExpired ? 'deny' : isWarningPhase ? 'caution' : 'signal';
+  const toneText = { deny: 'text-deny', caution: 'text-caution', signal: 'text-signal' }[tone];
+  const toneBg = { deny: 'bg-deny', caution: 'bg-caution', signal: 'bg-signal' }[tone];
 
   return (
-    <div className={`min-h-screen ${bgClass} flex flex-col`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">Back to Results</span>
-        </button>
-      </div>
+    <div className="flex min-h-screen flex-col bg-ground">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
+        <header className="pt-safe pt-5">
+          <button
+            onClick={onBack}
+            className="-ml-1 flex items-center gap-1 py-2 text-dim transition-transform duration-150 ease-out active:scale-[0.98]"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <span className="text-[13px]">Back to result</span>
+          </button>
+        </header>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <h2 className="text-xl font-semibold text-gray-700 mb-8 tracking-wide uppercase text-sm">
-          Parking Timer
-        </h2>
+        <div className="flex flex-1 flex-col justify-center py-8">
+          <p className="kicker">
+            {analysisResult?.location?.address
+              ? `Parked · ${analysisResult.location.address}`
+              : 'Parked'}
+          </p>
 
-        {/* Circular progress ring */}
-        <div className="relative mb-8">
-          <svg width="200" height="200" viewBox="0 0 200 200">
-            {/* Background track */}
-            <circle
-              cx="100"
-              cy="100"
-              r={RADIUS}
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="12"
+          {isExpired ? (
+            <h1 className="mt-4 font-display text-verdict uppercase text-deny">
+              Time is{' '}
+              <br />
+              up
+            </h1>
+          ) : (
+            <p
+              className={`mt-4 font-mono text-[56px] font-medium leading-none tracking-tight ${
+                isWarningPhase ? `${toneText} animate-pulse-slow` : 'text-ink'
+              }`}
+            >
+              {formattedTime}
+            </p>
+          )}
+
+          <p className="mt-3 font-mono text-[11px] uppercase text-dim">
+            {isExpired
+              ? `Expired ${clockAt(expiresAt)} — move the car`
+              : `Expires ${clockAt(expiresAt)} · warn at ${clockAt(warnAt)}`}
+          </p>
+
+          {/* Elapsed rail. A bar reads faster than a ring at a glance and gives
+              the two clock times somewhere honest to sit. */}
+          <div className="mt-8 h-[3px] w-full bg-rule" role="presentation">
+            <div
+              className={`h-full ${toneBg} transition-[width] duration-1000 ease-linear`}
+              style={{ width: `${Math.max(0, Math.min(100, percentRemaining))}%` }}
             />
-            {/* Progress arc */}
-            <circle
-              cx="100"
-              cy="100"
-              r={RADIUS}
-              fill="none"
-              stroke={ringColor}
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={CIRCUMFERENCE}
-              strokeDashoffset={strokeDashoffset}
-              transform="rotate(-90 100 100)"
-              style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s' }}
-            />
-          </svg>
-
-          {/* Countdown text overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            {isExpired ? (
-              <>
-                <span className="text-2xl font-bold text-red-600">TIME'S UP</span>
-              </>
-            ) : (
-              <>
-                <span
-                  className={`text-3xl font-bold tabular-nums ${
-                    isWarningPhase ? 'text-amber-600 animate-pulse-slow' : 'text-gray-900'
-                  }`}
-                >
-                  {formattedTime}
-                </span>
-                <span className="text-xs text-gray-500 mt-1">remaining</span>
-              </>
-            )}
           </div>
+          <div className="mt-2 flex justify-between font-mono text-[10px] text-faint">
+            <span>{clockAt(startedAt)}</span>
+            <span>{Math.round(Math.max(0, percentRemaining))}%</span>
+            <span>{clockAt(expiresAt)}</span>
+          </div>
+
+          {isWarningPhase && !isExpired && (
+            <p className="mt-6 border-l-4 border-caution pl-4 text-[13px] leading-relaxed text-ink">
+              Fifteen minutes left. Start heading back to the car.
+            </p>
+          )}
+
+          {isExpired && (
+            <p className="mt-6 border-l-4 border-deny pl-4 text-[13px] leading-relaxed text-ink">
+              Your parking has expired. Move the vehicle now to avoid a fine.
+            </p>
+          )}
+
+          {analysisResult && (
+            <div className="mt-8 grid gap-0">
+              {analysisResult.rawText && (
+                <div className="spec-row">
+                  <span className="spec-label">Sign</span>
+                  <span className="spec-value text-right">“{analysisResult.rawText}”</span>
+                </div>
+              )}
+              {analysisResult.applicableSide && analysisResult.applicableSide !== 'both' && (
+                <div className="spec-row">
+                  <span className="spec-label">Applies to</span>
+                  <span className="spec-value">
+                    {analysisResult.applicableSide.toUpperCase()} of sign
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Status message */}
-        {isExpired && (
-          <div className="bg-red-100 border border-red-300 rounded-xl px-6 py-4 text-center mb-6">
-            <p className="text-red-800 font-semibold">Your parking time has expired.</p>
-            <p className="text-red-700 text-sm mt-1">Move your vehicle now to avoid a fine.</p>
-          </div>
-        )}
-
-        {isWarningPhase && !isExpired && (
-          <div className="bg-amber-100 border border-amber-300 rounded-xl px-6 py-4 text-center mb-6">
-            <p className="text-amber-800 font-semibold">15 minutes remaining</p>
-            <p className="text-amber-700 text-sm mt-1">Start heading back to your vehicle.</p>
-          </div>
-        )}
-
-        {/* Analysis context */}
-        {analysisResult && (
-          <div className="bg-white rounded-xl shadow px-5 py-4 w-full max-w-xs mb-8 space-y-2">
-            {analysisResult.rawText && (
-              <p className="text-xs text-gray-500 font-mono text-center">"{analysisResult.rawText}"</p>
-            )}
-            {analysisResult.applicableSide && analysisResult.applicableSide !== 'both' && (
-              <p className="text-xs text-center text-blue-600 font-medium">
-                Analysing {analysisResult.applicableSide.toUpperCase()} side rules
-              </p>
-            )}
-            {analysisResult.location?.address && (
-              <p className="text-xs text-gray-400 text-center">{analysisResult.location.address}</p>
-            )}
-          </div>
-        )}
-
-        {/* Stop button */}
-        <button
-          onClick={onStop}
-          className="flex items-center gap-2 border-2 border-red-400 text-red-600 hover:bg-red-50 font-semibold py-3 px-8 rounded-xl transition-colors"
-        >
-          <Square className="w-4 h-4 fill-current" />
-          Stop Timer
-        </button>
+        <div className="pb-safe pb-6">
+          <button onClick={onStop} className="btn-quiet h-[46px] text-[13px]">
+            End timer
+          </button>
+        </div>
       </div>
     </div>
   );
