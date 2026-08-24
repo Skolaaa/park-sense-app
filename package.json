@@ -22,7 +22,9 @@
     "release:patch": "npm version patch -m \"Release v%s\"",
     "release:minor": "npm version minor -m \"Release v%s\"",
     "release:major": "npm version major -m \"Release v%s\"",
-    "preversion": "npm run test:ci"
+    "preversion": "npm run test:ci",
+    "security:scan": "node scripts/check-bundle-secrets.js",
+    "postbuild": "node scripts/check-bundle-secrets.js"
   },
   "eslintConfig": {
     "extends": [

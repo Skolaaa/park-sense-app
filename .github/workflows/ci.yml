@@ -27,3 +27,9 @@ jobs:
 
       - name: Build
         run: CI=true npm run build
+
+      # `npm run build` already triggers this via the postbuild hook; running it
+      # explicitly makes a credential leak read as its own failed step rather
+      # than as a confusing build failure.
+      - name: Scan build output for secrets
+        run: npm run security:scan

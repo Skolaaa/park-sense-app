@@ -10,6 +10,12 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 
 ## [Unreleased]
 
+### Security
+- The build now fails if a credential reaches the client bundle, or if client
+  code reads a `REACT_APP_*` variable whose name implies a secret. This runs as
+  a `postbuild` hook, so it blocks a deploy rather than reporting after the
+  fact.
+
 ### Added
 - A recovery screen when the app hits an unexpected error. Instead of a blank
   white page you get an explanation and a way back, and a running parking
