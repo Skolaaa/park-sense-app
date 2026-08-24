@@ -1,18 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-AU">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#2563eb" />
-    <meta name="description" content="Smart parking sign analysis app" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <title>ParkSense — read any Sydney parking sign</title>
+    <meta
+      name="description"
+      content="Photograph a Sydney parking sign and get a straight answer: can you park here right now, for how long, and what it costs if you get it wrong."
+    />
+
+    <link rel="icon" href="%PUBLIC_URL%/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.svg" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>ParkSense - Smart Parking Analysis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Matches the Kerbside ground colour so the status bar and the app agree. -->
+    <meta name="theme-color" content="#0E1210" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="color-scheme" content="dark" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ParkSense" />
+    <meta
+      property="og:description"
+      content="Photograph a Sydney parking sign and get a straight answer: can you park here right now, for how long, and what it costs if you get it wrong."
+    />
+    <meta property="og:image" content="%PUBLIC_URL%/favicon.svg" />
+    <meta name="twitter:card" content="summary" />
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>ParkSense needs JavaScript enabled to read parking signs.</noscript>
     <div id="root"></div>
   </body>
 </html>

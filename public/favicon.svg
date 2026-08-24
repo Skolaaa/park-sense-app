@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ParkSense">
+  <rect width="64" height="64" rx="12" fill="#0E1210"/>
+  <rect x="10" y="8" width="44" height="48" rx="4" fill="#E4B33C"/>
+  <path d="M24 46V18h11c6.1 0 10 3.6 10 9.1 0 5.6-3.9 9.2-10 9.2h-4.6V46H24zm6.4-15.3h4c2.6 0 4.2-1.4 4.2-3.6 0-2.2-1.6-3.5-4.2-3.5h-4v7.1z" fill="#14180F"/>
+</svg>

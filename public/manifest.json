@@ -1,15 +1,18 @@
 {
   "short_name": "ParkSense",
-  "name": "ParkSense - Smart Parking Analysis",
+  "name": "ParkSense — Sydney parking signs",
+  "description": "Photograph a parking sign and get a straight answer on whether you can park.",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#0E1210",
+  "background_color": "#0E1210"
 }

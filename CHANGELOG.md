@@ -10,7 +10,16 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- Styling is now compiled at build time instead of being generated in the
+  browser by the Tailwind CDN script. The app no longer waits on a
+  third-party request before it can paint, and it renders correctly with no
+  network connection.
+
+### Fixed
+- The app icon and touch icon were referenced but missing, so every page load
+  requested two files that did not exist. There is now a real ParkSense icon.
+- Full-height screens no longer jump as Safari's toolbar collapses on iOS.
 
 ## [0.5.0] — 2026-08-24
 
