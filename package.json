@@ -1,6 +1,6 @@
 {
   "name": "parksense-app",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Smart parking sign analysis app",
   "private": true,
   "dependencies": {
@@ -17,7 +17,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test:ci": "CI=true react-scripts test --watchAll=false",
+    "release:patch": "npm version patch -m \"Release v%s\"",
+    "release:minor": "npm version minor -m \"Release v%s\"",
+    "release:major": "npm version major -m \"Release v%s\"",
+    "preversion": "npm run test:ci"
   },
   "eslintConfig": {
     "extends": [

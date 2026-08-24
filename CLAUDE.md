@@ -30,6 +30,28 @@ On Vercel, add `OPENAI_API_KEY` as a **server-side** environment variable (no `R
 
 Demo mode is active whenever the proxy returns `503` (key not configured) or a network error — `analysisResult.isMockData` is `true` in that case.
 
+## Versioning & Changelog
+
+Semantic versioning, tracked in `package.json` and `CHANGELOG.md`. Pre-1.0, the
+minor version carries user-facing change and the patch version carries fixes.
+
+**Every change that a user would notice gets a `CHANGELOG.md` entry** under
+`## [Unreleased]`, in the same commit as the change — not retroactively at
+release time. Use the Keep a Changelog headings: `Added`, `Changed`,
+`Deprecated`, `Removed`, `Fixed`, `Security`. Describe the effect on the user,
+not the diff. Purely internal refactors with no observable effect can be skipped.
+
+To cut a release, move the `[Unreleased]` entries under a new version heading
+with today's date, add the compare link at the bottom, then:
+
+```bash
+npm run release:patch   # or release:minor / release:major
+git push --follow-tags
+```
+
+`npm version` runs the test suite first (`preversion`), then bumps
+`package.json`, commits, and tags `vX.Y.Z`.
+
 ## Architecture
 
 Single-page React app with no router — view state is managed entirely in `App` via the `VIEW_STATES` enum.

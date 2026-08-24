@@ -1,0 +1,75 @@
+# Changelog
+
+All notable changes to ParkSense are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+While the app is pre-1.0, the minor version carries user-facing change and the
+patch version carries fixes; nothing here is treated as a stable public API yet.
+
+## [Unreleased]
+
+_Nothing yet._
+
+## [0.5.0] — 2026-08-24
+
+### Added
+- Rate limiting on `/api/analyze`: 10 requests per minute per IP, answered with
+  `429` and a `Retry-After` header.
+- 45-second timeout on analysis requests so a hung upstream call surfaces as a
+  timeout rather than an indefinite spinner.
+- In-app camera error screen that distinguishes a denied permission from a
+  general device failure, replacing a browser `alert()`.
+- First test suite in the project — 85 cases across 7 suites covering the
+  analyze endpoint, the analysis service and its mock fallbacks, the timer,
+  location and notification services, sign time parsing, and camera capture.
+
+### Fixed
+- Camera was torn down and re-acquired on every parent render — once a second
+  while a parking timer was running — because `onCancel` sat in an effect
+  dependency array that no longer referenced it.
+- Rate-limit store grew for the lifetime of a warm serverless instance; expired
+  windows are now swept.
+- Unhandled promise rejection from the fire-and-forget location update in
+  `app.js`.
+
+## [0.4.0] — 2026-04-13
+
+### Security
+- Moved the OpenAI API key server-side behind a Vercel serverless proxy so it is
+  no longer bundled into the browser.
+
+### Changed
+- More robust JSON parsing of model responses, with error detail surfaced.
+- Clearer confidence messaging, and an explicit "no sign found" result.
+
+### Fixed
+- `/api/analyze` routing, plus error visibility on the preview screen.
+
+## [0.3.0] — 2026-04-12
+
+### Added
+- Phase 2: directional sign handling, parking timer, notifications, and location
+  capture.
+
+### Fixed
+- Case-sensitive import paths that broke the Linux build on Vercel.
+- `react-hooks/exhaustive-deps` warning in `CameraCapture`.
+
+## [0.2.0] — 2025-07-12
+
+### Added
+- Real OpenAI GPT-4V analysis, replacing the mocked responses.
+
+## [0.1.0] — 2025-07-11
+
+### Added
+- Phase 1 MVP: camera capture and mock AI sign analysis.
+
+[Unreleased]: https://github.com/Skolaaa/park-sense-app/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Skolaaa/park-sense-app/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Skolaaa/park-sense-app/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Skolaaa/park-sense-app/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Skolaaa/park-sense-app/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Skolaaa/park-sense-app/releases/tag/v0.1.0
