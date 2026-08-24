@@ -10,6 +10,13 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 
 ## [Unreleased]
 
+### Added
+- A recovery screen when the app hits an unexpected error. Instead of a blank
+  white page you get an explanation and a way back, and a running parking
+  timer survives either route.
+- Continuous integration: the full test suite and a production build now run
+  on every pull request and push to main.
+
 ### Changed
 - Styling is now compiled at build time instead of being generated in the
   browser by the Tailwind CDN script. The app no longer waits on a
@@ -20,6 +27,10 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 - The app icon and touch icon were referenced but missing, so every page load
   requested two files that did not exist. There is now a real ParkSense icon.
 - Full-height screens no longer jump as Safari's toolbar collapses on iOS.
+- The app no longer hangs on "Analysing" when a photo cannot be read. An
+  unreadable image now says so and offers a retake.
+- The version shown on the home screen matches the released version. It had
+  been stuck at 1.0.0 since the first commit.
 
 ## [0.5.0] — 2026-08-24
 
