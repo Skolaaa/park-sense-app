@@ -6,23 +6,34 @@ export class ParkingAnalysisService {
   static async analyzeImage(imageData, selectedSide = null) {
     const optimizedImage = await this.optimizeImage(imageData);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
     let response;
     try {
       response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageData: optimizedImage, selectedSide }),
+        signal: controller.signal,
       });
-    } catch {
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') throw new Error('Analysis timed out — please try again');
       // Network error (e.g. running npm start without vercel dev) — use mock.
-      const mock = await this.getMockResponse();
-      return mock;
+      return await this.getMockResponse();
     }
+    clearTimeout(timeoutId);
 
     // API key not configured server-side → fall back to mock.
     if (response.status === 503) {
-      const mock = await this.getMockResponse();
-      return mock;
+      return await this.getMockResponse();
+    }
+
+    if (response.status === 429) {
+      const errorData = await response.json().catch(() => ({}));
+      const wait = errorData.retryAfter ? ` Try again in ${errorData.retryAfter}s.` : '';
+      throw new Error(`Too many requests — please wait a moment before trying again.${wait}`);
     }
 
     if (!response.ok) {

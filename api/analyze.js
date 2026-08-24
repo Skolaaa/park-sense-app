@@ -1,9 +1,38 @@
 // Vercel serverless function — proxies requests to OpenAI so the API key
 // never leaves the server and is not visible in the browser.
 
+// In-memory rate limiter — persists across warm invocations of the same instance.
+const rateLimitStore = new Map();
+const RATE_LIMIT = 10;
+const WINDOW_MS = 60_000;
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+  if (!entry || now - entry.windowStart > WINDOW_MS) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return { allowed: true };
+  }
+  if (entry.count >= RATE_LIMIT) {
+    const retryAfter = Math.ceil((WINDOW_MS - (now - entry.windowStart)) / 1000);
+    return { allowed: false, retryAfter };
+  }
+  entry.count++;
+  return { allowed: true };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.socket?.remoteAddress
+    || 'unknown';
+  const rl = checkRateLimit(ip);
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', String(rl.retryAfter));
+    return res.status(429).json({ error: 'rate_limit', retryAfter: rl.retryAfter });
   }
 
   const apiKey = process.env.OPENAI_API_KEY;

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, XCircle } from 'lucide-react';
+import { Camera, XCircle, AlertTriangle } from 'lucide-react';
 import { CAMERA_CONFIG } from '../utils/constants';
 
 const CameraCapture = ({ onCapture, onCancel, isActive }) => {
@@ -7,6 +7,7 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const [showTips, setShowTips] = useState(true);
+  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
     const stopCamera = () => {
@@ -26,8 +27,10 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
-          alert('Unable to access camera. Please ensure you have granted camera permissions.');
-          onCancel();
+          const msg = error.name === 'NotAllowedError'
+            ? 'Camera access was denied. Please enable camera permissions in your browser settings and try again.'
+            : 'Unable to access the camera. Please check your device and try again.';
+          setCameraError(msg);
         }
       };
 
@@ -43,13 +46,6 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
     }
   }, [isActive, onCancel]);
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  };
-
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const canvas = canvasRef.current;
@@ -62,12 +58,33 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
       context.drawImage(video, 0, 0);
 
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
-      stopCamera();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
       onCapture(imageData);
     }
   };
 
   if (!isActive) return null;
+
+  if (cameraError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-6 text-center">
+        <div className="w-16 h-16 bg-red-900 rounded-full flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8 text-red-400" />
+        </div>
+        <h2 className="text-white text-xl font-semibold mb-3">Camera Unavailable</h2>
+        <p className="text-gray-400 text-sm max-w-xs mb-8">{cameraError}</p>
+        <button
+          onClick={onCancel}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-screen bg-black">

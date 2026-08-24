@@ -78,7 +78,7 @@ const App = () => {
         if (location) {
           setAnalysisResult((prev) => prev ? { ...prev, location } : { ...result, location });
         }
-      });
+      }).catch(() => {});
 
       setAnalysisResult(result);
       setCurrentView(VIEW_STATES.RESULTS);
