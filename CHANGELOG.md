@@ -26,6 +26,8 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
   banner. When the sign is only partly legible the app says so, shows what it
   could read, and asks you to retake — with the result still available if you
   want it.
+- The results screen now shows what time your parking runs out, not just how
+  long you have.
 - Camera errors tell you what to do. A denied permission is now distinguished
   from a busy camera, each with its own instruction.
 - Styling is now compiled at build time instead of being generated in the

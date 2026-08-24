@@ -174,8 +174,21 @@ const ResultsDisplay = ({
     : 'bg-deny text-deny-ink';
   const bandKicker = canPark ? 'text-permit-ink/70' : 'text-deny-ink/70';
 
+  const expiresAt = parsedDurationMs
+    ? new Date(Date.now() + parsedDurationMs).toLocaleTimeString('en-AU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Australia/Sydney',
+      })
+    : null;
+
   const summary = canPark
-    ? [timeLimit || 'No limit posted', paymentRequired ? 'Payment required' : 'No payment']
+    ? [
+        timeLimit || 'No limit posted',
+        expiresAt && `until ${expiresAt}`,
+        paymentRequired ? 'Payment required' : 'No payment',
+      ]
         .filter(Boolean)
         .join(' · ')
     : [rawText ? rawText.split(/[\n,]/)[0].trim() : 'Restricted', estimatedFine && `fine ${estimatedFine}`]
@@ -235,7 +248,7 @@ const ResultsDisplay = ({
           <SpecRow
             label="Read at"
             value={
-              <span className={confidence >= 0.85 ? 'text-permit' : 'text-caution'}>
+              <span className={confidence >= 0.85 ? 'text-ink' : 'text-caution'}>
                 {Math.round(confidence * 100)}% confident
               </span>
             }
@@ -252,21 +265,23 @@ const ResultsDisplay = ({
           </ul>
         )}
 
-        {location?.address && (
-          <p className="mt-5 flex items-start gap-2 text-xs leading-snug text-faint">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {location.address}
-          </p>
-        )}
-
         {mockNotice}
 
-        <div className="pb-safe mt-auto grid gap-2.5 pb-6 pt-8">
+        <div className="mt-auto pt-10">
           {rawText && (
-            <p className="mb-1 font-mono text-[10px] uppercase leading-relaxed text-faint">
+            <p className="font-mono text-[10px] uppercase leading-relaxed text-faint">
               “{rawText}”
             </p>
           )}
+          {location?.address && (
+            <p className="mt-2 flex items-start gap-2 text-xs leading-snug text-faint">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {location.address}
+            </p>
+          )}
+        </div>
+
+        <div className="pb-safe grid gap-2.5 pb-6 pt-5">
 
           {canShowTimer && !timerRunning && (
             <button
@@ -274,7 +289,7 @@ const ResultsDisplay = ({
               className="btn-signal h-[52px]"
             >
               <Timer className="h-4 w-4" aria-hidden="true" />
-              Start {timeLimit} timer
+              Start timer · {timeLimit}
             </button>
           )}
 

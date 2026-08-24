@@ -133,20 +133,25 @@ const App = () => {
   const renderHomeScreen = () => (
     <div className="flex min-h-screen flex-col bg-ground">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
-        <header className="pt-safe pt-10">
+        <header className="pt-safe pt-8">
           <p className="kicker">Kerbside reader · Sydney</p>
-          <h1 className="mt-3 font-display text-verdict-sm uppercase">
+        </header>
+
+        {/* The headline sits in the free space rather than pinning to the top,
+            which left half a phone of dead ground on a tall screen. */}
+        <div className="flex flex-1 flex-col justify-center py-10">
+          <h1 className="font-display text-verdict uppercase">
             Point it{' '}
             <br />
             at the sign
           </h1>
-          <p className="mt-4 max-w-[32ch] text-[13px] leading-relaxed text-dim">
+          <p className="mt-5 max-w-[30ch] text-[13px] leading-relaxed text-dim">
             Reads NSW plates, applies the current Sydney time and the arrow
             rules, then answers the only question that matters.
           </p>
-        </header>
+        </div>
 
-        <div className="mt-auto pb-safe pb-6">
+        <div className="pb-safe pb-6">
           {renderErrorMessage()}
 
           {isMockResult && (
