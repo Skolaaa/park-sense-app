@@ -21,6 +21,8 @@ The opening is not "another mileage tracker." It's **the vehicle-expense complia
 
 Confidence: moderate. The tax-rule gaps are verified and real. What is *not* verified is willingness to pay — see §8.
 
+For the positioning that follows from this — why the product is a *defensibility* tool rather than a measurement tool, and why that changes the buyer and the price — see §6a.
+
 ---
 
 ## 2. The tax rules are the product spec
@@ -155,6 +157,111 @@ For tradies this is worse than average: 8–15 stops a day, suppliers, multiple 
 
 ---
 
+## 6a. The defining difference / USP
+
+### The reframe
+
+Every mileage app on the market is built on the assumption that **distance is the unknown**. Enter
+kilometres, apply a rate, produce a deduction. Measurement is the entire product.
+
+For a tradie, distance is the *least* uncertain thing about the day. The unknown is
+**classification** — which legs are claimable, and whether it can be proven. An identical 42 km
+driving day is a $0 claim or a fully deductible one depending on facts the odometer knows nothing
+about:
+
+- Were the bulky tools aboard, and was there secure storage at the site?
+- Is this the same site every day for six months — quietly converting it into a regular place of
+  work and killing the home-to-site deduction?
+- If it is a company ute, did that supermarket detour just consume part of a 1,000 km private-use
+  budget worth five figures?
+
+**USP in one line:**
+
+> Everyone else measures the drive. This one classifies it and defends it.
+
+The unit of the product is not the kilometre. It is the trip's legal character.
+
+### Why this is structural, not a feature
+
+Three things change downstream, and they are what make this a business rather than something an
+incumbent bolts on in a sprint.
+
+**1. The output artefact changes.** Not a number to key into myTax — an evidence file: trip,
+purpose, tools carried, site-storage answer, odometer, matched fuel receipts, FBT threshold
+position. Something an accountant signs off and an auditor accepts. Competitors produce a figure;
+this produces a defence.
+
+**2. The buyer changes.** For the FBT case the customer is not a driver chasing a $4,550 deduction.
+It is an employer carrying five-figure annual exposure per vehicle who, under PCG 2018/3, must
+demonstrate they *actively monitor* private use — and today has no way to do that short of
+$13–60/vehicle/month fleet telematics that does not report against the thresholds anyway.
+
+**3. The pricing anchor changes with it.** See the asymmetry below.
+
+### The value asymmetry (the core commercial argument)
+
+| | Cents-per-km user | Tradie with a ute |
+|---|---|---|
+| What is at stake | $4,550 deduction (capped) | $15–25k actual-cost claim, uncapped |
+| Plus, if employing | — | FBT exposure per vehicle per year |
+| Can they self-assert it? | Largely yes | No — requires substantiation |
+| Realistic willingness to pay | Low | Materially higher |
+
+**FBT exposure, worked example.** A $70,000 ute that fails the PCG 2018/3 safe harbour, under the
+statutory formula:
+
+```
+$70,000 base value x 20%      = $14,000  taxable value
+$14,000 x 2.0802 (Type 1)     = $29,123  grossed-up value
+$29,123 x 47% (FBT rate)      = $13,688  FBT payable, per vehicle, per year
+```
+
+A real client case found in research showed a $9,981 FBT liability on a single dual cab.
+
+Nobody pays $200/year to protect a $4,550 deduction they can effectively self-assert. A business
+will pay $200/vehicle/year to stop a ~$13,700 liability from landing. That is a 5–10x pricing
+unlock, and it comes entirely from the reframe — not from any additional feature.
+
+*(Note: a dual cab under 1 tonne is a "car" and attracts FBT via the statutory formula; a dual cab
+at or over 1 tonne is not a car but still gives rise to a residual benefit unless the exempt-use
+conditions are met. Both routes lead to FBT when private use is not minor, infrequent and
+irregular.)*
+
+### The demo that sells it
+
+One screen: **a fuel gauge for the FBT exemption.**
+
+> "340 of 1,000 private km used. 2 trips flagged for review. One return journey at 180 km — 20 km
+> from breaching."
+
+Live, per vehicle, alerting *before* a breach rather than reporting one after. That number exists
+nowhere else on the market, represents five figures of liability, and a business owner will open it
+weekly. Contrast with the incumbent core screen — a running kilometre total, capped at $4,550 of
+value, that nobody looks at between July and June.
+
+### What could kill this strategy
+
+The USP only holds if the product is **willing to take a position** on classification. The moment
+every trip is hedged with "consult your accountant," it is a measurement app with extra forms —
+strictly worse than Driversnote, not better.
+
+Taking positions requires:
+
+- A registered tax agent standing behind the rule set
+- Probably professional indemnity insurance
+- A real answer to "we classified this as deductible and the ATO disagreed"
+
+That cost must be priced in from day one, not discovered in year two. It is also the moat: it is why
+ServiceM8, Tradify, Fergus and AroFlo — who already hold the job data and could technically build
+this tomorrow — most likely will not. Job management software has no appetite for tax-position
+liability.
+
+**Corollary for §2.3:** getting the non-car tax treatment right is *table stakes done correctly*,
+not a USP. It is cheap for a competitor to copy once someone proves the demand. The defensible
+position is the evidence layer and the employer-side FBT monitoring, not the calculation.
+
+---
+
 ## 7. Risks
 
 | Risk | Severity | Note |
@@ -237,6 +344,11 @@ Run the 15–20 validation interviews first, weighted toward accountants. The ta
 - [PwC — ATO practical compliance guideline on exempt car benefits](https://www.pwc.com.au/tax/taxtalk/assets/alerts/ato-practical-compliance-guideline-private-use-of-exempt-car-and-residual-benefits.pdf)
 - [Allworths — FBT implications for vehicles over 1 tonne](https://allworths.com.au/2021/03/26/vehicles-fringe-benefits-tax/)
 - [Cotchy — Dual cab ute FBT exemptions and rules](https://cotchy.com.au/articles/dual-cab-ute-fbt-exemption-rules/)
+- [ATO — Why your dual cab utes may attract FBT](https://www.ato.gov.au/businesses-and-organisations/small-business-newsroom/why-your-dual-cab-utes-may-attract-fbt)
+- [ATO — Exempt use of eligible vehicles](https://www.ato.gov.au/businesses-and-organisations/hiring-and-paying-your-workers/fringe-benefits-tax/types-of-fringe-benefits/fbt-on-cars-other-vehicles-parking-and-tolls/exempt-use-of-eligible-vehicles)
+- [ATO — Current FBT rate and gross-up rates](https://www.ato.gov.au/api/public/content/0-4fb0f16e-89f1-4068-aec9-c8acb1befc04)
+- [BG Private — Dual-cab utes under scrutiny by ATO](https://bgprivate.com.au/insights/articles/dual-cab-utes-fringe-benefits-tax/)
+- [Bentleys — FBT rules for company cars or work vehicles](https://www.bentleys.com.au/insights/fringe-benefit-tax-fbt-rules-for-company-cars-or-work-vehicles-in-australia/)
 
 **Competitors:**
 - [Driversnote pricing](https://www.driversnote.com.au/pricing)
