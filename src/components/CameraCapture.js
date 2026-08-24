@@ -44,7 +44,10 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
     } else {
       stopCamera();
     }
-  }, [isActive, onCancel]);
+    // `onCancel` is deliberately NOT a dependency: it is redefined on every
+    // parent render, and including it tore down and re-acquired the camera on
+    // each render (once a second while a parking timer is running).
+  }, [isActive]);
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {

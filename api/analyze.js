@@ -6,8 +6,20 @@ const rateLimitStore = new Map();
 const RATE_LIMIT = 10;
 const WINDOW_MS = 60_000;
 
+// Drop entries whose window has closed. Without this the Map grows for the
+// lifetime of the instance, since an IP that never returns is never overwritten.
+let lastSweep = Date.now();
+function sweepExpired(now) {
+  if (now - lastSweep < WINDOW_MS) return;
+  lastSweep = now;
+  for (const [key, entry] of rateLimitStore) {
+    if (now - entry.windowStart > WINDOW_MS) rateLimitStore.delete(key);
+  }
+}
+
 function checkRateLimit(ip) {
   const now = Date.now();
+  sweepExpired(now);
   const entry = rateLimitStore.get(ip);
   if (!entry || now - entry.windowStart > WINDOW_MS) {
     rateLimitStore.set(ip, { count: 1, windowStart: now });
