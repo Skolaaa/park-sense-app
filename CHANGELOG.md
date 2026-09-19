@@ -24,10 +24,21 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
   on every pull request and push to main.
 
 ### Changed
-- Redesigned every screen. The verdict — whether you can park — is now the
-  only loud thing on screen, sized to be read at arm's length on a bright
-  street, with the detail below it as a plain spec list. Replaces a layout
-  that spread six competing accent colours across seven pastel cards.
+- Redesigned every screen again, this time as a clean, light interface built
+  from a small set of reusable components (button, card, badge, alert,
+  progress). The verdict is a single green or red card, the sign details sit
+  in a plain list beneath it, and every action is a full-width button pinned
+  to the bottom of the screen. Follows your phone's light or dark setting.
+- The parking timer is a circular ring with the countdown inside and the
+  start, reminder and expiry times listed as clock times beneath it.
+- The camera shows corner brackets to line the sign up in, a standard round
+  shutter, and tips that fade out on their own.
+- The photo check now shows the whole photo uncropped, so a sign cut off at an
+  edge is visible before it is sent.
+- While a timer runs, the results screen shows one floating timer bar instead
+  of a timer button and a bar that said the same thing.
+- The "notifications are off" notice dismisses itself after a few seconds and
+  no longer blocks the controls underneath it.
 - A weak read no longer shows a confident-looking result behind a warning
   banner. When the sign is only partly legible the app says so, shows what it
   could read, and asks you to retake — with the result still available if you
@@ -42,6 +53,11 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
   network connection.
 
 ### Fixed
+- Tapping the shutter before the camera delivered its first frame captured a
+  blank image that later failed as an unreadable photo. The tap is now ignored
+  until there is a frame to capture.
+- Screens sat flush against the top edge on desktop because the safe-area
+  padding overrode the normal top padding.
 - The app icon and touch icon were referenced but missing, so every page load
   requested two files that did not exist. There is now a real ParkSense icon.
 - Full-height screens no longer jump as Safari's toolbar collapses on iOS.

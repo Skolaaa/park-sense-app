@@ -14,11 +14,12 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.svg" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <!-- Matches the Kerbside ground colour so the status bar and the app agree. -->
-    <meta name="theme-color" content="#0E1210" />
+    <!-- Status bar matches the app ground in each theme. -->
+    <meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0F1115" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="color-scheme" content="light dark" />
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content="ParkSense" />

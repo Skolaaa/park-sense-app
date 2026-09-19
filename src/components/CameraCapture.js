@@ -1,19 +1,23 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Camera, X } from 'lucide-react';
+import { X, CameraOff } from 'lucide-react';
 import { CAMERA_CONFIG } from '../utils/constants';
+import { Screen, ScreenActions } from './Screen';
+import { Button } from './ui/button';
 
 // Copy is split by cause: a denied permission is a thing the user can fix, and
 // telling them exactly where to fix it beats a generic apology.
 const ERROR_COPY = {
   denied: {
-    heading: ['Camera access', 'is switched off'],
+    heading: 'Camera access is switched off',
     body: 'Open the settings for this site in your browser and set Camera to Allow, then come back and try again.',
   },
   unavailable: {
-    heading: ['Camera is', 'not available'],
+    heading: 'Camera is not available',
     body: 'Another app may be holding the camera. Close anything else using it, then try again.',
   },
 };
+
+const TIPS = ['Fill the frame with the sign', 'Hold steady with both hands', 'Include any arrows'];
 
 const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   const videoRef = useRef(null);
@@ -45,7 +49,7 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
       };
 
       startCamera();
-      // Auto-hide the tips overlay after 3 seconds.
+      // Auto-hide the tips after 3 seconds.
       const timer = setTimeout(() => setShowTips(false), 3000);
       return () => {
         clearTimeout(timer);
@@ -60,7 +64,9 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   }, [isActive]);
 
   const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    // A tap before the first frame arrives would capture an empty canvas, which
+    // then fails downstream as an unreadable photo.
+    if (videoRef.current?.videoWidth && canvasRef.current) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
 
@@ -84,82 +90,83 @@ const CameraCapture = ({ onCapture, onCancel, isActive }) => {
   if (cameraError) {
     const copy = ERROR_COPY[cameraError] ?? ERROR_COPY.unavailable;
     return (
-      <div className="flex min-h-screen flex-col bg-ground">
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
-          <div className="flex flex-1 flex-col justify-center py-12">
-            <div className="border-l-4 border-deny pl-4">
-              <p className="kicker text-deny">Camera blocked</p>
-              <h1 className="mt-2 font-display text-verdict-sm uppercase">
-                {copy.heading[0]}{' '}
-                <br />
-                {copy.heading[1]}
-              </h1>
-            </div>
-            <p className="mt-5 max-w-[34ch] text-[13px] leading-relaxed text-dim">{copy.body}</p>
-          </div>
-          <div className="pb-safe pb-6">
-            <button onClick={onCancel} className="btn-quiet h-[46px] text-[13px]">
-              Back
-            </button>
-          </div>
+      <Screen>
+        <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+            <CameraOff className="h-6 w-6 text-destructive" aria-hidden="true" />
+          </span>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight [text-wrap:balance]">
+            {copy.heading}
+          </h1>
+          <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-muted-foreground">
+            {copy.body}
+          </p>
         </div>
-      </div>
+        <ScreenActions>
+          <Button variant="outline" onClick={onCancel}>
+            Back
+          </Button>
+        </ScreenActions>
+      </Screen>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-black">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="h-screen w-full object-cover"
-      />
+    <div className="relative h-screen overflow-hidden bg-black text-white">
+      <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Framing guide — the single most common cause of a bad read is a sign
-          that does not fill the frame. */}
+          that does not fill the frame. Corner brackets, not a full box, so the
+          sign itself stays unobstructed. */}
       <div
-        className="pointer-events-none absolute inset-x-8 top-1/2 aspect-[4/3] -translate-y-1/2 border border-white/40"
+        className="pointer-events-none absolute inset-x-10 top-1/2 aspect-[3/4] max-h-[55vh] -translate-y-1/2"
         aria-hidden="true"
-      />
+      >
+        {['left-0 top-0 border-l-2 border-t-2 rounded-tl-xl',
+          'right-0 top-0 border-r-2 border-t-2 rounded-tr-xl',
+          'bottom-0 left-0 border-b-2 border-l-2 rounded-bl-xl',
+          'bottom-0 right-0 border-b-2 border-r-2 rounded-br-xl'].map((corner) => (
+          <span key={corner} className={`absolute h-8 w-8 border-white/80 ${corner}`} />
+        ))}
+      </div>
 
-      <div className="pt-safe absolute inset-x-0 top-0 p-5">
-        <p className="text-center font-mono text-[10px] uppercase tracking-[0.17em] text-white/70">
-          Fill the frame with the sign
-        </p>
+      <div className="pt-safe absolute inset-x-0 top-0">
+        <div className="flex items-center justify-between p-4">
+          <span className="rounded-full bg-black/50 px-3.5 py-1.5 text-sm font-medium backdrop-blur-sm">
+            Line up the sign
+          </span>
+          <button
+            onClick={onCancel}
+            aria-label="Cancel"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition-transform duration-150 ease-out active:scale-95"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {showTips && (
-        <div className="absolute inset-x-5 top-16 bg-black/70 p-4 backdrop-blur-sm">
-          <p className="kicker mb-2 text-signal">For a clean read</p>
-          <ul className="grid gap-1 text-[13px] leading-snug text-white/80">
-            <li>Fill the frame with the sign</li>
-            <li>Hold steady, both hands</li>
-            <li>Include the directional arrows</li>
-          </ul>
-        </div>
+        <ul className="animate-rise absolute inset-x-5 top-20 grid gap-1.5 rounded-2xl bg-black/60 p-4 text-sm backdrop-blur-sm">
+          {TIPS.map((tip) => (
+            <li key={tip} className="flex items-center gap-2.5 text-white/90">
+              <span className="h-1.5 w-1.5 rounded-full bg-white/70" aria-hidden="true" />
+              {tip}
+            </li>
+          ))}
+        </ul>
       )}
 
-      <div className="pb-safe absolute inset-x-0 bottom-0 flex items-center justify-between px-8 pb-10">
-        <button
-          onClick={onCancel}
-          aria-label="Cancel"
-          className="p-3 text-white/70 transition-transform duration-150 ease-out active:scale-[0.98]"
-        >
-          <X className="h-6 w-6" aria-hidden="true" />
-        </button>
-
-        <button
-          onClick={capturePhoto}
-          aria-label="Capture photo of the parking sign"
-          className="flex h-[76px] w-[76px] items-center justify-center rounded-full bg-signal text-signal-ink transition-transform duration-150 ease-out active:scale-95"
-        >
-          <Camera className="h-7 w-7" aria-hidden="true" />
-        </button>
-
-        <span className="w-12" aria-hidden="true" />
+      <div className="pb-safe absolute inset-x-0 bottom-0">
+        <div className="flex justify-center pb-10">
+          <button
+            onClick={capturePhoto}
+            aria-label="Capture photo of the parking sign"
+            className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white transition-transform duration-150 ease-out active:scale-95"
+          >
+            <span className="h-16 w-16 rounded-full bg-white" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );

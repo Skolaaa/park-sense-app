@@ -63,7 +63,7 @@ npm run build    # Production build → build/
 ## Tech Stack
 
 - React 18
-- Tailwind CSS (CDN)
+- Tailwind CSS (compiled at build time) with shadcn/ui-style components (`cva` + `tailwind-merge`)
 - OpenAI GPT-4o (vision)
 - Web Notifications API
 - Geolocation API + OpenStreetMap Nominatim (reverse geocoding)

@@ -89,7 +89,9 @@ HOME → CAMERA → PREVIEW → SIDE_SELECTION → ANALYZING → RESULTS ⇄ TIM
 - `src/utils/timeParser.js` — `"2 hours"` / `"30 min"` → milliseconds
 - `src/utils/constants.js` — `VIEW_STATES`, `TIMER_CONFIG`, `CAMERA_CONFIG`, `APP_CONFIG`
 
-**Styling:** Tailwind CSS via CDN (`public/index.html`). No CSS modules. Custom animation `.animate-pulse-slow` defined in `src/app.css`.
+**Styling:** Tailwind CSS compiled at build time (react-scripts detects `tailwind.config.js`). Colours are CSS variables declared in `src/app.css` — light on `:root`, dark under `prefers-color-scheme: dark` — and exposed as Tailwind colours (`bg-background`, `text-muted-foreground`, `bg-success`, …). Green and red are reserved for the verdict; the primary button is neutral ink.
+
+UI primitives live in `src/components/ui/` and follow the shadcn/ui pattern (`cva` variants + `cn()` from `src/lib/utils.js`): `Button`, `Card`, `Badge`, `Alert`, `Progress`. `src/components/Screen.js` is the shared page shell (`Screen`, `ScreenHeader`, `ScreenActions`) — every screen is one phone-width column with actions pinned to the bottom. Safe-area insets are applied once in `Screen`; fixed overlays add `pt-safe`/`pb-safe` themselves.
 
 ## Analysis Result Shape
 

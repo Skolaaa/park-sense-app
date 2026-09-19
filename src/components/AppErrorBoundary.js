@@ -5,13 +5,11 @@
 // Wired in src/index.js around the root <App />. Without it, any render error
 // unmounts the whole tree and the user is left staring at a white screen with
 // no way back other than a manual browser refresh.
-//
-// Styled with the app's own theme tokens. An earlier version used stock
-// Tailwind on the theory that it would survive "the theme layer breaking", but
-// both compile into the same stylesheet — there is no failure mode where one
-// resolves and the other does not.
 
 import React from 'react';
+import { AlertOctagon } from 'lucide-react';
+import { Screen, ScreenActions } from './Screen';
+import { Button } from './ui/button';
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -48,49 +46,38 @@ class AppErrorBoundary extends React.Component {
     }
 
     return (
-      <div className="flex min-h-screen flex-col bg-ground">
-        <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5">
-          <div className="flex flex-1 flex-col justify-center py-12">
-            <div className="border-l-4 border-deny pl-4">
-              <p className="kicker text-deny">Unexpected error</p>
-              <h1 className="mt-2 font-display text-verdict-sm uppercase">
-                Something{' '}
-                <br />
-                went wrong
-              </h1>
-            </div>
-            <p className="mt-5 max-w-[34ch] text-[13px] leading-relaxed text-dim">
-              ParkSense could not finish rendering. A running parking timer is
-              unaffected — it is stored on this device and will still be counting
-              down.
-            </p>
+      <Screen>
+        <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+            <AlertOctagon className="h-6 w-6 text-destructive" aria-hidden="true" />
+          </span>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Something went wrong</h1>
+          <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-muted-foreground">
+            ParkSense could not finish rendering. A running parking timer is unaffected — it is
+            stored on this device and will still be counting down.
+          </p>
 
-            {error.message && (
-              <details className="mt-6">
-                <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.17em] text-faint">
-                  Error details
-                </summary>
-                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words border border-rule bg-panel p-3 font-mono text-[11px] leading-relaxed text-dim">
-                  {error.message}
-                </pre>
-              </details>
-            )}
-          </div>
-
-          <div className="pb-safe grid gap-2.5 pb-6">
-            <button type="button" onClick={this.handleReload} className="btn-signal h-[52px]">
-              Reload
-            </button>
-            <button
-              type="button"
-              onClick={this.handleTryAgain}
-              className="btn-quiet h-[46px] text-[13px]"
-            >
-              Back to start
-            </button>
-          </div>
+          {error.message && (
+            <details className="mt-6 w-full text-left">
+              <summary className="cursor-pointer text-center text-xs font-medium text-muted-foreground">
+                Error details
+              </summary>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-card p-3 font-mono text-xs leading-relaxed text-muted-foreground">
+                {error.message}
+              </pre>
+            </details>
+          )}
         </div>
-      </div>
+
+        <ScreenActions>
+          <Button size="lg" onClick={this.handleReload}>
+            Reload
+          </Button>
+          <Button variant="outline" onClick={this.handleTryAgain}>
+            Back to start
+          </Button>
+        </ScreenActions>
+      </Screen>
     );
   }
 }

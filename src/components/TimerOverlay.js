@@ -1,41 +1,32 @@
 import React from 'react';
+import { Timer } from 'lucide-react';
+import { Button } from './ui/button';
 
-// Sits directly under the results content, so it reads as a bar bolted to the
-// bottom edge — full bleed, a single rule on top, no card lift of its own.
-// ResultsDisplay reserves the space with pb-24 while a timer runs.
+// Floats above the results content while a timer runs. ResultsDisplay reserves
+// the space with pb-24.
 const TimerOverlay = ({ formattedTime, isWarningPhase, onViewTimer, onStop }) => (
-  <div
-    className={`pb-safe fixed inset-x-0 bottom-0 z-50 border-t bg-panel ${
-      isWarningPhase ? 'border-caution' : 'border-rule'
-    }`}
-  >
-    <div className="mx-auto flex w-full max-w-md items-center justify-between gap-4 px-5 py-3">
-      <div>
-        <p className={`kicker ${isWarningPhase ? 'text-caution' : ''}`}>
-          {isWarningPhase ? 'Expiring soon' : 'Timer running'}
-        </p>
+  <div className="pb-safe fixed inset-x-0 bottom-0 z-50 px-5">
+    <div className="mx-auto mb-4 flex w-full max-w-md items-center gap-3 rounded-2xl border border-border bg-card p-3 pl-4 shadow-float">
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+          isWarningPhase ? 'bg-warning/15 text-warning' : 'bg-success/10 text-success'
+        }`}
+      >
+        <Timer className={`h-4 w-4 ${isWarningPhase ? 'animate-pulse-slow' : ''}`} aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{isWarningPhase ? 'Ends soon' : 'Timer'}</p>
         {/* Tabular figures — the countdown must not shuffle as digits change. */}
-        <p
-          className={`mt-1 font-mono text-lg leading-none tracking-tight ${
-            isWarningPhase ? 'text-caution animate-pulse-slow' : 'text-signal'
-          }`}
-        >
+        <p className={`tabular text-base font-semibold leading-tight ${isWarningPhase ? 'text-warning' : ''}`}>
           {formattedTime}
         </p>
       </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        <button onClick={onViewTimer} className="btn-quiet h-11 w-auto px-4 text-[13px]">
-          View
-        </button>
-        <button
-          onClick={onStop}
-          aria-label="Stop timer"
-          className="btn-quiet h-11 w-auto px-4 text-[13px] text-dim"
-        >
-          Stop
-        </button>
-      </div>
+      <Button size="sm" variant="secondary" onClick={onViewTimer}>
+        View
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onStop} aria-label="Stop timer">
+        Stop
+      </Button>
     </div>
   </div>
 );
