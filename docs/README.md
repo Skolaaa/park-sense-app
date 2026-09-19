@@ -13,9 +13,12 @@ Read in order:
    nothing, and the four gates that must pass before a paywall exists.
 3. **[GO-TO-MARKET.md](./GO-TO-MARKET.md)** — how the release happens: channels,
    launch day, the first 90 days, and the five metrics that decide it.
+4. **[COMPETITIVE-EDGE.md](./COMPETITIVE-EDGE.md)** — what to build to beat a
+   field of competitors that already exists, and what to refuse to build.
 
 The one-line summary: **the app is ship-quality and the business is pre-product.
-Measure accuracy before you sell anything, and do not price the scan.**
+Measure accuracy before you sell anything, do not price the scan, and win on
+knowing what day it is rather than on reading the sign.**
 
 ## Running the skills yourself
 
@@ -30,5 +33,5 @@ The full pack is available in this repo as slash commands:
 ```
 
 `/founder:landing-page` and `/founder:metrics-dashboard` are the natural next
-two — the go-to-market plan references copy and a dashboard that neither of
+two. The go-to-market plan references landing copy and a dashboard that none of
 these documents produces.
