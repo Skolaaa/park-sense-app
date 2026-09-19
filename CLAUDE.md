@@ -30,6 +30,28 @@ On Vercel, add `OPENAI_API_KEY` as a **server-side** environment variable (no `R
 
 Demo mode is active whenever the proxy returns `503` (key not configured) or a network error — `analysisResult.isMockData` is `true` in that case.
 
+## Versioning & Changelog
+
+Semantic versioning, tracked in `package.json` and `CHANGELOG.md`. Pre-1.0, the
+minor version carries user-facing change and the patch version carries fixes.
+
+**Every change that a user would notice gets a `CHANGELOG.md` entry** under
+`## [Unreleased]`, in the same commit as the change — not retroactively at
+release time. Use the Keep a Changelog headings: `Added`, `Changed`,
+`Deprecated`, `Removed`, `Fixed`, `Security`. Describe the effect on the user,
+not the diff. Purely internal refactors with no observable effect can be skipped.
+
+To cut a release, move the `[Unreleased]` entries under a new version heading
+with today's date, add the compare link at the bottom, then:
+
+```bash
+npm run release:patch   # or release:minor / release:major
+git push --follow-tags
+```
+
+`npm version` runs the test suite first (`preversion`), then bumps
+`package.json`, commits, and tags `vX.Y.Z`.
+
 ## Architecture
 
 Single-page React app with no router — view state is managed entirely in `App` via the `VIEW_STATES` enum.
@@ -67,7 +89,9 @@ HOME → CAMERA → PREVIEW → SIDE_SELECTION → ANALYZING → RESULTS ⇄ TIM
 - `src/utils/timeParser.js` — `"2 hours"` / `"30 min"` → milliseconds
 - `src/utils/constants.js` — `VIEW_STATES`, `TIMER_CONFIG`, `CAMERA_CONFIG`, `APP_CONFIG`
 
-**Styling:** Tailwind CSS via CDN (`public/index.html`). No CSS modules. Custom animation `.animate-pulse-slow` defined in `src/app.css`.
+**Styling:** Tailwind CSS compiled at build time (react-scripts detects `tailwind.config.js`). Colours are CSS variables declared in `src/app.css` — light on `:root`, dark under `prefers-color-scheme: dark` — and exposed as Tailwind colours (`bg-background`, `text-muted-foreground`, `bg-success`, …). Green and red are reserved for the verdict; the primary button is neutral ink.
+
+UI primitives live in `src/components/ui/` and follow the shadcn/ui pattern (`cva` variants + `cn()` from `src/lib/utils.js`): `Button`, `Card`, `Badge`, `Alert`, `Progress`. `src/components/Screen.js` is the shared page shell (`Screen`, `ScreenHeader`, `ScreenActions`) — every screen is one phone-width column with actions pinned to the bottom. Safe-area insets are applied once in `Screen`; fixed overlays add `pt-safe`/`pb-safe` themselves.
 
 ## Analysis Result Shape
 

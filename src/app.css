@@ -1,49 +1,127 @@
-/* Reset and base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Ensure full height */
-html, body, #root {
-  height: 100%;
-  overflow-x: hidden;
-}
-
-/* Custom animations */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
+@layer base {
+  /* Design tokens, RGB channels only — see tailwind.config.js.
+     Light is the default; dark follows the OS setting. */
+  :root {
+    --background: 244 245 247;
+    --foreground: 21 24 29;
+    --card: 255 255 255;
+    --muted: 236 238 241;
+    --muted-foreground: 106 113 128;
+    --border: 227 230 235;
+    --primary: 21 24 29;
+    --primary-foreground: 255 255 255;
+    --success: 22 150 86;
+    --success-foreground: 255 255 255;
+    --destructive: 217 52 43;
+    --destructive-foreground: 255 255 255;
+    --warning: 200 128 8;
+    --warning-foreground: 255 255 255;
+    --ring: 37 99 235;
+    color-scheme: light;
   }
-  50% {
-    opacity: 0.5;
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 15 17 21;
+      --foreground: 242 243 245;
+      --card: 24 27 33;
+      --muted: 34 38 45;
+      --muted-foreground: 154 161 173;
+      --border: 42 46 54;
+      --primary: 242 243 245;
+      --primary-foreground: 21 24 29;
+      --success: 46 176 108;
+      --success-foreground: 6 30 17;
+      --destructive: 232 82 72;
+      --destructive-foreground: 43 8 6;
+      --warning: 227 158 40;
+      --warning-foreground: 40 25 3;
+      --ring: 96 148 255;
+      color-scheme: dark;
+    }
   }
-}
 
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .mobile-padding {
-    padding: 1rem;
+  html,
+  body,
+  #root {
+    /* dvh, not vh — iOS Safari counts the collapsing toolbar inside 100vh,
+       which makes full-height views jump as the bar hides. */
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
-}
 
-/* PWA specific styles */
-@media (display-mode: standalone) {
   body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Digits that update in place — countdowns, confidence, durations — must not
+     reflow as glyphs change width. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Touch-first: suppress the tap highlight in favour of explicit :active. */
+  button,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  /* Safe areas matter once this is installed to the home screen. */
+  .pt-safe {
     padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  @keyframes pulse-slow {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: rise 260ms ease-out both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

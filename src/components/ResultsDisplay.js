@@ -1,10 +1,46 @@
-import React from 'react';
-import {
-  CheckCircle, XCircle, Clock, DollarSign, Car, AlertTriangle,
-  RotateCcw, Timer, MapPin, AlertOctagon, Camera,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Timer, RotateCcw, MapPin, Camera, Check, X, AlertTriangle, ImageOff } from 'lucide-react';
 import { parseTimeLimit } from '../utils/timeParser';
 import TimerOverlay from './TimerOverlay';
+import { Screen, ScreenActions } from './Screen';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Alert } from './ui/alert';
+import { Card, CardContent } from './ui/card';
+
+// The verdict is only true for a moment in time, so it states the moment it
+// was decided.
+const sydneyTime = (ms = Date.now()) =>
+  new Date(ms).toLocaleTimeString('en-AU', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Australia/Sydney',
+  });
+
+const shortDays = (days) => {
+  const abbr = days.map((d) => d.slice(0, 3));
+  return abbr.length > 3 ? `${abbr[0]}–${abbr[abbr.length - 1]}` : abbr.join(', ');
+};
+
+const SIDE_LABEL = { left: 'Left of the sign', right: 'Right of the sign', both: 'Both sides' };
+
+const DetailRow = ({ label, children }) => (
+  <div className="flex items-baseline justify-between gap-4 px-5 py-3 text-[15px]">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="text-right font-medium">{children}</span>
+  </div>
+);
+
+// A centred icon-and-message screen for the states with no verdict to show.
+const EmptyState = ({ icon: Icon, tone, title, children }) => (
+  <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+    <span className={`flex h-14 w-14 items-center justify-center rounded-full ${tone}`}>
+      <Icon className="h-6 w-6" aria-hidden="true" />
+    </span>
+    <h1 className="mt-6 text-2xl font-semibold tracking-tight [text-wrap:balance]">{title}</h1>
+    <p className="mt-3 max-w-[32ch] text-[15px] leading-relaxed text-muted-foreground">{children}</p>
+  </div>
+);
 
 const ResultsDisplay = ({
   analysisResult,
@@ -17,6 +53,10 @@ const ResultsDisplay = ({
   timerFormattedTime,
   timerWarningPhase,
 }) => {
+  // A weak read hides the detail behind an explicit choice rather than burying
+  // a warning banner above a confident-looking result.
+  const [overrideLowConfidence, setOverrideLowConfidence] = useState(false);
+
   if (!analysisResult) return null;
 
   const {
@@ -33,284 +73,179 @@ const ResultsDisplay = ({
     applicableSide,
     estimatedFine,
     location,
+    isMockData,
   } = analysisResult;
 
   const parsedDurationMs = parseTimeLimit(timeLimit);
   const canShowTimer = canPark && timeLimit && parsedDurationMs;
+  const isLowConfidence = confidence > 0 && confidence < 0.65;
+  const confidencePct = Math.round(confidence * 100);
 
-  const getConfidenceColor = (score) => {
-    if (score >= 0.85) return 'text-green-600';
-    if (score >= 0.65) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  const overlay = timerRunning ? (
+    <TimerOverlay
+      formattedTime={timerFormattedTime}
+      isWarningPhase={timerWarningPhase}
+      onViewTimer={onViewTimer}
+      onStop={onStopTimer}
+    />
+  ) : null;
 
-  const getConfidenceBarColor = (score) => {
-    if (score >= 0.85) return 'bg-green-500';
-    if (score >= 0.65) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+  const mockNotice = (showMockWarning || isMockData) ? (
+    <Alert variant="warning" title="Demo mode">
+      No API key is configured, so this is sample data.
+    </Alert>
+  ) : null;
 
-  const getConfidenceText = (score) => {
-    if (score >= 0.85) return 'Sign clearly read — result is reliable';
-    if (score >= 0.65) return 'Sign partially read — verify key details before parking';
-    if (score > 0)     return 'Sign unclear — retake for a reliable result';
-    return 'Unable to read sign';
-  };
+  // ─── No sign in the frame ──────────────────────────────────────────────────
+  if (noSignFound) {
+    return (
+      <Screen className={timerRunning ? 'pb-24' : ''}>
+        <EmptyState icon={ImageOff} tone="bg-muted text-muted-foreground" title="No sign in that photo">
+          Get the whole sign in the frame with the text readable end to end, then try again.
+        </EmptyState>
+        <ScreenActions>
+          {mockNotice}
+          <Button size="lg" onClick={onAnalyzeAnother}>
+            <Camera className="h-4 w-4" aria-hidden="true" />
+            Scan another sign
+          </Button>
+        </ScreenActions>
+        {overlay}
+      </Screen>
+    );
+  }
 
-  const sideLabel = applicableSide === 'left' ? 'LEFT'
-    : applicableSide === 'right' ? 'RIGHT'
-    : null;
+  // ─── Weak read — uncertainty is the whole screen ───────────────────────────
+  if (isLowConfidence && !overrideLowConfidence) {
+    return (
+      <Screen className={timerRunning ? 'pb-24' : ''}>
+        <EmptyState icon={AlertTriangle} tone="bg-warning/10 text-warning" title="Check this one yourself">
+          Only part of the sign was legible, so the answer could be wrong in exactly the way
+          that costs you a fine.
+        </EmptyState>
+
+        {rawText && (
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">What we could read</p>
+                <Badge variant="warning">{confidencePct}% confident</Badge>
+              </div>
+              <p className="mt-2 text-[15px] leading-snug text-muted-foreground">“{rawText}”</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <ScreenActions>
+          {mockNotice}
+          <Button size="lg" onClick={onAnalyzeAnother}>
+            <Camera className="h-4 w-4" aria-hidden="true" />
+            Retake the photo
+          </Button>
+          <Button variant="ghost" onClick={() => setOverrideLowConfidence(true)}>
+            Show the result anyway
+          </Button>
+        </ScreenActions>
+        {overlay}
+      </Screen>
+    );
+  }
+
+  // ─── Full verdict ──────────────────────────────────────────────────────────
+  const expiresAt = parsedDurationMs ? sydneyTime(Date.now() + parsedDurationMs) : null;
+
+  const summary = canPark
+    ? [timeLimit ? `${timeLimit} limit` : 'No limit posted', expiresAt && `until ${expiresAt}`, paymentRequired && 'payment required']
+    : [specialConditions?.[0] || 'Restrictions are in force right now', estimatedFine && `fine ${estimatedFine}`];
 
   return (
-    <div className={`min-h-screen bg-gray-50 p-4 ${timerRunning ? 'pb-24' : ''}`}>
-      <div className="max-w-md mx-auto space-y-4">
+    <Screen className={timerRunning ? 'pb-24' : ''}>
+      <div className="pt-6" />
 
-        {/* Mock data warning */}
-        {(showMockWarning || analysisResult.isMockData) && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-yellow-800 mb-1">Demo Result</h3>
-                <p className="text-sm text-yellow-700">
-                  This is mock data. Add your OpenAI API key for real parking sign analysis.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* The verdict is the only loud thing on the screen, sized to be read at
+          arm's length on a bright street. */}
+      <section
+        className={`animate-rise rounded-2xl p-6 ${
+          canPark ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'
+        }`}
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
+          {canPark ? (
+            <Check className="h-7 w-7" strokeWidth={2.5} aria-hidden="true" />
+          ) : (
+            <X className="h-7 w-7" strokeWidth={2.5} aria-hidden="true" />
+          )}
+        </span>
+        <h1 className="mt-5 text-[32px] font-semibold leading-tight tracking-tight">
+          {canPark ? 'You can park here' : 'No parking right now'}
+        </h1>
+        <p className="mt-2 text-[15px] leading-snug opacity-90">
+          {summary.filter(Boolean).join(' · ')}
+        </p>
+        <p className="mt-4 text-xs opacity-70">Checked at {sydneyTime()} Sydney time</p>
+      </section>
 
-        {/* No sign found — show a dedicated prompt and stop rendering further */}
-        {noSignFound && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-5">
-              <Camera className="w-10 h-10 text-orange-500" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">No Parking Sign Detected</h2>
-            <p className="text-gray-500 text-sm max-w-xs mb-8">
-              Make sure the parking sign fills the frame and the text is clearly visible, then try again.
-            </p>
-            <button
-              onClick={onAnalyzeAnother}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-xl flex items-center gap-2 transition-colors shadow"
-            >
-              <RotateCcw className="w-5 h-5" />
-              Try Again
-            </button>
-          </div>
-        )}
-
-        {/* All remaining content only renders when a sign was found */}
-        {!noSignFound && <>
-
-        {/* Low confidence banner — only for scores in the uncertain range */}
-        {confidence > 0 && confidence < 0.65 && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-orange-800">Sign unclear — retake for a reliable result</p>
-                <p className="text-sm text-orange-700 mt-0.5">
-                  Fill the frame with the sign, hold steady, and ensure all text is readable.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main result card */}
-        <div className={`rounded-xl p-6 text-center ${
-          canPark
-            ? 'bg-green-100 border-2 border-green-300'
-            : 'bg-red-100 border-2 border-red-300'
-        }`}>
-          <div className="flex justify-center mb-4">
-            {canPark
-              ? <CheckCircle className="w-16 h-16 text-green-600" />
-              : <XCircle className="w-16 h-16 text-red-600" />
-            }
-          </div>
-          <h2 className={`text-2xl font-bold mb-2 ${canPark ? 'text-green-800' : 'text-red-800'}`}>
-            {canPark ? 'You Can Park Here!' : 'No Parking Allowed'}
-          </h2>
-          <p className={canPark ? 'text-green-700' : 'text-red-700'}>
-            {canPark
-              ? 'Based on current time and conditions'
-              : 'Parking restrictions are in effect'}
-          </p>
-          {/* Side badge */}
-          {sideLabel && (
-            <div className="mt-3 inline-flex items-center gap-1.5 bg-white bg-opacity-60 rounded-full px-3 py-1 text-xs font-medium text-gray-700">
-              <Car className="w-3 h-3" />
-              Analysing {sideLabel} side rules
-            </div>
+      <Card className="mt-4">
+        <div className="flex items-center justify-between px-5 pt-4 pb-1">
+          <h2 className="text-sm font-semibold">Sign details</h2>
+          <Badge variant={confidence >= 0.85 ? 'success' : 'warning'}>{confidencePct}% confident</Badge>
+        </div>
+        <div className="divide-y divide-border">
+          {timeLimit && <DetailRow label="Limit">{timeLimit}</DetailRow>}
+          {hours && <DetailRow label="Hours">{hours}</DetailRow>}
+          {days?.length > 0 && <DetailRow label="Days">{shortDays(days)}</DetailRow>}
+          {SIDE_LABEL[applicableSide] && <DetailRow label="Applies to">{SIDE_LABEL[applicableSide]}</DetailRow>}
+          {paymentRequired && <DetailRow label="Payment">Required</DetailRow>}
+          {vehicleTypes?.length > 0 && <DetailRow label="Vehicles">{vehicleTypes.join(', ')}</DetailRow>}
+          {!canPark && estimatedFine && (
+            <DetailRow label="Fine if caught">
+              <span className="text-destructive">{estimatedFine}</span>
+            </DetailRow>
           )}
         </div>
+      </Card>
 
-        {/* Location */}
-        {location?.address && (
-          <div className="flex items-start gap-3 bg-white rounded-xl shadow px-4 py-3">
-            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-            <p className="text-sm text-gray-600 leading-snug">{location.address}</p>
-          </div>
-        )}
-
-        {/* Estimated fine (shown when can't park) */}
-        {!canPark && estimatedFine && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <AlertOctagon className="w-5 h-5 text-red-600 shrink-0" />
-            <div>
-              <p className="font-medium text-gray-900">Estimated Fine if Caught</p>
-              <p className="text-red-700 font-semibold">{estimatedFine}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Detail cards */}
-        <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">Parking Details</h3>
-
-          {timeLimit && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-gray-900">Time Limit</p>
-                <p className="text-gray-600">{timeLimit}</p>
-              </div>
-            </div>
-          )}
-
-          {paymentRequired && (
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="font-medium text-gray-900">Payment Required</p>
-                <p className="text-gray-600">Paid parking zone</p>
-              </div>
-            </div>
-          )}
-
-          {days && days.length > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-              <Car className="w-5 h-5 text-purple-600 mt-1" />
-              <div>
-                <p className="font-medium text-gray-900">Restriction Days</p>
-                <p className="text-gray-600">{days.join(', ')}</p>
-              </div>
-            </div>
-          )}
-
-          {hours && (
-            <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">
-              <Clock className="w-5 h-5 text-orange-600" />
-              <div>
-                <p className="font-medium text-gray-900">Restriction Hours</p>
-                <p className="text-gray-600">{hours}</p>
-              </div>
-            </div>
-          )}
-
-          {vehicleTypes && vehicleTypes.length > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-indigo-50 rounded-lg">
-              <Car className="w-5 h-5 text-indigo-600 mt-1" />
-              <div>
-                <p className="font-medium text-gray-900">Allowed Vehicles</p>
-                <p className="text-gray-600">{vehicleTypes.join(', ')}</p>
-              </div>
-            </div>
-          )}
-
-          {specialConditions && specialConditions.length > 0 && (
-            <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mt-1" />
-              <div>
-                <p className="font-medium text-gray-900">Special Conditions</p>
-                {specialConditions.map((condition, index) => (
-                  <p key={index} className="text-gray-600 mb-1">{condition}</p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {rawText && (
-            <div className="pt-4 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-900 mb-2">Detected Text</p>
-              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg font-mono">"{rawText}"</p>
-            </div>
-          )}
-
-          {/* Confidence score */}
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-sm text-gray-500">AI Confidence</span>
-                <p className={`text-sm font-medium ${getConfidenceColor(confidence)}`}>
-                  {getConfidenceText(confidence)}
-                </p>
-              </div>
-              <span className={`text-lg font-bold ${getConfidenceColor(confidence)}`}>
-                {Math.round(confidence * 100)}%
-              </span>
-            </div>
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-500 ${getConfidenceBarColor(confidence)}`}
-                style={{ width: `${confidence * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="space-y-3">
-          {/* Start Timer — only when parking is allowed and time limit is parseable */}
-          {canShowTimer && !timerRunning && (
-            <button
-              onClick={() => onStartTimer(parsedDurationMs)}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-            >
-              <Timer className="w-5 h-5" />
-              Start Parking Timer ({timeLimit})
-            </button>
-          )}
-
-          {/* Timer running — show "View Timer" button */}
-          {timerRunning && (
-            <button
-              onClick={onViewTimer}
-              className={`w-full font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg ${
-                timerWarningPhase
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              <Timer className={`w-5 h-5 ${timerWarningPhase ? 'animate-pulse-slow' : ''}`} />
-              {timerFormattedTime} remaining — View Timer
-            </button>
-          )}
-
-          <button
-            onClick={onAnalyzeAnother}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-          >
-            <RotateCcw className="w-5 h-5" />
-            Analyse Another Sign
-          </button>
-        </div>
-
-        </>} {/* end !noSignFound */}
-      </div>
-
-      {/* Sticky timer overlay */}
-      {timerRunning && (
-        <TimerOverlay
-          formattedTime={timerFormattedTime}
-          isWarningPhase={timerWarningPhase}
-          onViewTimer={onViewTimer}
-          onStop={onStopTimer}
-        />
+      {specialConditions?.length > (canPark ? 0 : 1) && (
+        <ul className="mt-4 grid gap-1.5 px-1 text-sm leading-snug text-muted-foreground">
+          {specialConditions.slice(canPark ? 0 : 1).map((condition) => (
+            <li key={condition} className="flex gap-2">
+              <span aria-hidden="true">•</span>
+              {condition}
+            </li>
+          ))}
+        </ul>
       )}
-    </div>
+
+      {(rawText || location?.address) && (
+        <div className="mt-4 grid gap-2 px-1 text-sm text-muted-foreground">
+          {rawText && <p className="leading-snug">Sign reads “{rawText}”</p>}
+          {location?.address && (
+            <p className="flex items-start gap-1.5 leading-snug">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {location.address}
+            </p>
+          )}
+        </div>
+      )}
+
+      <ScreenActions>
+        {mockNotice}
+
+        {/* While a timer runs, the floating TimerOverlay is the timer control. */}
+        {canShowTimer && !timerRunning && (
+          <Button size="lg" onClick={() => onStartTimer(parsedDurationMs)}>
+            <Timer className="h-5 w-5" aria-hidden="true" />
+            Start {timeLimit} timer
+          </Button>
+        )}
+
+        <Button variant={canShowTimer && !timerRunning ? 'outline' : 'default'} onClick={onAnalyzeAnother}>
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Scan another sign
+        </Button>
+      </ScreenActions>
+      {overlay}
+    </Screen>
   );
 };
 

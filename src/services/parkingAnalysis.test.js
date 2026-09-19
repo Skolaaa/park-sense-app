@@ -162,6 +162,116 @@ describe('ParkingAnalysisService.analyzeImage', () => {
   });
 });
 
+// ─── optimizeImage ───────────────────────────────────────────────────────────
+
+// optimizeImage runs BEFORE analyzeImage creates its AbortController, so the
+// 45s request timeout cannot rescue it. Every path has to settle the promise or
+// the user is stranded on the ANALYZING view forever.
+describe('ParkingAnalysisService.optimizeImage', () => {
+  let images;
+  let OriginalImage;
+  let toDataURL;
+  let drawImage;
+
+  beforeEach(() => {
+    // The top-level beforeEach stubs optimizeImage; these tests exercise the
+    // real implementation.
+    ParkingAnalysisService.optimizeImage.mockRestore();
+
+    // Silence the deliberate [ParkSense] diagnostics on the failure paths.
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // jsdom never loads image data, so drive onload/onerror by hand.
+    images = [];
+    OriginalImage = global.Image;
+    global.Image = class FakeImage {
+      constructor() {
+        this.width = 2048;
+        this.height = 1024;
+        this.onload = null;
+        this.onerror = null;
+        this.src = null;
+        images.push(this);
+      }
+    };
+
+    // jsdom has no canvas implementation; stand one in.
+    drawImage = jest.fn();
+    toDataURL = jest.fn(() => 'data:image/jpeg;base64,RESIZED');
+    const realCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag, ...rest) =>
+      tag === 'canvas'
+        ? { width: 0, height: 0, getContext: () => ({ drawImage }), toDataURL }
+        : realCreateElement(tag, ...rest)
+    );
+  });
+
+  afterEach(() => {
+    global.Image = OriginalImage;
+    jest.useRealTimers();
+  });
+
+  test('rejects with a user-facing message when the image fails to decode', async () => {
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,GARBAGE');
+    const assertion = expect(promise).rejects.toThrow('Could not read that photo — please retake it');
+    images[0].onerror(new Event('error'));
+    await assertion;
+  });
+
+  test('rejects rather than hanging when neither onload nor onerror ever fires', async () => {
+    jest.useFakeTimers();
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,STALLED');
+    const assertion = expect(promise).rejects.toThrow('Could not process that photo — please retake it');
+    jest.advanceTimersByTime(15000);
+    await assertion;
+  });
+
+  test('rejects when the canvas resize itself throws', async () => {
+    toDataURL.mockImplementation(() => { throw new Error('canvas exploded'); });
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,abc');
+    const assertion = expect(promise).rejects.toThrow('Could not process that photo — please retake it');
+    images[0].onload();
+    await assertion;
+  });
+
+  test('resolves with the resized JPEG data URL on a successful load', async () => {
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,abc');
+    images[0].onload();
+    await expect(promise).resolves.toBe('data:image/jpeg;base64,RESIZED');
+    // 2048x1024 scaled to the 1024px max width.
+    expect(drawImage).toHaveBeenCalledWith(images[0], 0, 0, 1024, 512);
+  });
+
+  test('a late onerror after a successful load cannot re-settle the promise', async () => {
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,abc');
+    const img = images[0];
+    img.onload();
+    await expect(promise).resolves.toBe('data:image/jpeg;base64,RESIZED');
+    // Handlers are detached once settled, so this is a no-op rather than an
+    // unhandled rejection.
+    expect(img.onerror).toBeNull();
+  });
+
+  test('the abort timer is cleared once the image loads', async () => {
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    const promise = ParkingAnalysisService.optimizeImage('data:image/jpeg;base64,abc');
+    images[0].onload();
+    await promise;
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  // The failure surfaces through analyzeImage, which App catches and renders in
+  // the "Analysis Failed" banner — not as an unhandled rejection.
+  test('analyzeImage propagates the decode failure and never calls the API', async () => {
+    const promise = ParkingAnalysisService.analyzeImage('data:image/jpeg;base64,GARBAGE');
+    const assertion = expect(promise).rejects.toThrow('Could not read that photo — please retake it');
+    images[0].onerror(new Event('error'));
+    await assertion;
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(ParkingAnalysisService.getMockResponse).not.toHaveBeenCalled();
+  });
+});
+
 // ─── validateParkingResult ───────────────────────────────────────────────────
 
 describe('validateParkingResult', () => {

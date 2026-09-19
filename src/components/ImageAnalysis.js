@@ -1,92 +1,68 @@
 import React from 'react';
-import { RotateCcw, Camera } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react';
+import { Screen, ScreenHeader, ScreenActions } from './Screen';
+import { Button } from './ui/button';
+import { Alert } from './ui/alert';
+import { Progress } from './ui/progress';
 
-const ImageAnalysis = ({
-  capturedImage,
-  onAnalyze,
-  onRetake,
-  isAnalyzing,
-  error = null,
-  analysisProgress = 70
-}) => {
-  const renderPreview = () => (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <img
-            src={capturedImage}
-            alt="Captured parking sign"
-            className="w-full h-64 object-cover"
-          />
-        </div>
+// Uncropped, so the edges of the photo can be checked — a sign cut off at an
+// edge is exactly what this screen exists to catch.
+const Photo = ({ src, className = '' }) => (
+  <img
+    src={src}
+    alt="The parking sign you photographed"
+    className={`w-full rounded-2xl border border-border bg-muted object-contain ${className}`}
+  />
+);
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-            <p className="text-sm font-medium text-red-800 mb-1">Analysis failed</p>
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <button
-            onClick={onAnalyze}
-            disabled={isAnalyzing}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 rounded-xl transition-colors"
-          >
-            {isAnalyzing ? 'Analyzing...' : 'Analyze Parking Sign'}
-          </button>
-          
-          <button
-            onClick={onRetake}
-            disabled={isAnalyzing}
-            className="w-full bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-          >
-            <RotateCcw className="w-5 h-5" />
-            Retake Photo
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAnalyzing = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-      <div className="text-center">
-        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-6 mx-auto animate-pulse">
-          <Camera className="w-8 h-8 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing Parking Sign</h2>
-        <p className="text-gray-600 mb-8">Our AI is reading the sign and interpreting parking rules...</p>
-        
-        <div className="mt-8 space-y-2">
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-1000" 
-              style={{ width: `${analysisProgress}%` }}
-            />
-          </div>
-          <p className="text-sm text-gray-500">Processing image...</p>
-        </div>
-
-        {/* Show captured image thumbnail while analyzing */}
-        <div className="mt-8 max-w-48 mx-auto">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <img
-              src={capturedImage}
-              alt="Analyzing"
-              className="w-full h-24 object-cover opacity-75"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
+const ImageAnalysis = ({ capturedImage, onAnalyze, onRetake, isAnalyzing, error = null }) => {
+  // ─── Working — a spinner, the photo in flight, and no progress lie ─────────
   if (isAnalyzing) {
-    return renderAnalyzing();
+    return (
+      <Screen>
+        <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <Loader2 className="h-6 w-6 animate-spin text-foreground" aria-hidden="true" />
+          </span>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Reading the sign</h1>
+          <p className="mt-2 max-w-[32ch] text-[15px] leading-relaxed text-muted-foreground">
+            Lifting the text off the plate, then applying the current Sydney time and the
+            arrow rules.
+          </p>
+          <Progress aria-label="Reading the sign" className="mt-8 max-w-[200px]" />
+          {capturedImage && <Photo src={capturedImage} className="mt-10 h-32 opacity-50" />}
+        </div>
+      </Screen>
+    );
   }
 
-  return renderPreview();
+  // ─── Preview — the last chance to catch a bad photo ────────────────────────
+  return (
+    <Screen>
+      <ScreenHeader
+        eyebrow="Step 1 of 2"
+        title="Is the sign readable?"
+        description="If the text is blurred, angled away or cut off at an edge, retake it. The reader only sees what you see."
+      />
+
+      <Photo src={capturedImage} className="mt-6 max-h-[50vh]" />
+
+      <ScreenActions>
+        {error && (
+          <Alert variant="destructive" title="Analysis failed">
+            {error}
+          </Alert>
+        )}
+        <Button size="lg" onClick={onAnalyze}>
+          Read this sign
+        </Button>
+        <Button variant="outline" onClick={onRetake}>
+          <Camera className="h-4 w-4" aria-hidden="true" />
+          Retake the photo
+        </Button>
+      </ScreenActions>
+    </Screen>
+  );
 };
 
 export default ImageAnalysis;

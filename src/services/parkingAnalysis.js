@@ -2,6 +2,11 @@
 // Calls the /api/analyze serverless proxy, which holds the OpenAI API key
 // server-side. Falls back to mock data if the proxy is unavailable or unconfigured.
 
+// Belt-and-braces cap on the local image decode/resize step. This runs before
+// the fetch AbortController is created, so the 45s request timeout cannot
+// rescue a decode that never settles.
+const IMAGE_LOAD_TIMEOUT_MS = 15000;
+
 export class ParkingAnalysisService {
   static async analyzeImage(imageData, selectedSide = null) {
     const optimizedImage = await this.optimizeImage(imageData);
@@ -48,22 +53,58 @@ export class ParkingAnalysisService {
   }
 
   // Resize and compress the image before sending to reduce upload size.
+  //
+  // Every exit path must settle the promise. Malformed or truncated image data
+  // fires `onerror` (or, in rare cases, neither handler) — without these guards
+  // the promise hangs forever and analyzeImage never returns, leaving the user
+  // stuck on the ANALYZING view with no error and no timeout.
   static async optimizeImage(imageData, maxWidth = 1024, quality = 0.8) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
 
+      let settled = false;
+      let timeoutId = null;
+
+      const settleWith = (fn) => (value) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        img.onload = null;
+        img.onerror = null;
+        fn(value);
+      };
+
+      const succeed = settleWith(resolve);
+      const fail = settleWith(reject);
+
+      timeoutId = setTimeout(
+        () => fail(new Error('Could not process that photo — please retake it')),
+        IMAGE_LOAD_TIMEOUT_MS
+      );
+
       img.onload = () => {
-        let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
+        try {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          succeed(canvas.toDataURL('image/jpeg', quality));
+        } catch (err) {
+          // Canvas can still throw here (zero-size image, tainted canvas).
+          console.error('[ParkSense] Failed to resize captured image:', err);
+          fail(new Error('Could not process that photo — please retake it'));
         }
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+
+      img.onerror = () => {
+        console.error('[ParkSense] Failed to decode captured image');
+        fail(new Error('Could not read that photo — please retake it'));
       };
 
       img.src = imageData;

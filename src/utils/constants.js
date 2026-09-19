@@ -1,6 +1,15 @@
+// Single source of truth for the version is package.json, so the footer can
+// never drift from the released version again.
+//
+// CRA's ModuleScopePlugin explicitly allowlists package.json, so importing it
+// from src/ is supported. It must be a DEFAULT import — `import { version }`
+// compiles in dev but fails `react-scripts build` with "Should not import the
+// named export 'version' ... from default-exporting module".
+import packageJson from '../../package.json';
+
 export const APP_CONFIG = {
   name: 'ParkSense',
-  version: '1.0.0',
+  version: packageJson.version,
   description: 'Smart parking sign analysis',
 };
 
