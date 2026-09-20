@@ -10,6 +10,7 @@ import React from 'react';
 import { AlertOctagon } from 'lucide-react';
 import { Screen, ScreenActions } from './Screen';
 import { Button } from './ui/button';
+import { ErrorReporting } from '../services/errorReporting';
 
 class AppErrorBoundary extends React.Component {
   constructor(props) {
@@ -25,6 +26,7 @@ class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('[ParkSense] Render error caught by AppErrorBoundary:', error, errorInfo);
+    ErrorReporting.report(error, { source: 'AppErrorBoundary', componentStack: errorInfo?.componentStack?.slice(0, 1000) });
   }
 
   handleReload() {

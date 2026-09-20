@@ -32,7 +32,7 @@ export const NotificationService = {
     if (Notification.permission !== 'granted') return;
     new Notification('ParkSense — Parking Expiring Soon', {
       body: 'Your parking expires in 15 minutes. Move your vehicle to avoid a fine.',
-      icon: '/favicon.ico',
+      icon: '/icon-192.png',
       tag: 'parksense-warning',
     });
   },
@@ -41,7 +41,7 @@ export const NotificationService = {
     if (Notification.permission !== 'granted') return;
     new Notification('ParkSense — Parking Time Expired', {
       body: 'Your parking time has expired. Move your vehicle now.',
-      icon: '/favicon.ico',
+      icon: '/icon-192.png',
       tag: 'parksense-expired',
     });
   },

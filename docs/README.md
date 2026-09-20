@@ -16,6 +16,9 @@ Read in order:
 4. **[COMPETITIVE-EDGE.md](./COMPETITIVE-EDGE.md)** — what to build to beat a
    field of competitors that already exists, and what to refuse to build.
 
+The status table at the top of LAUNCH-READINESS.md records which of the
+blockers have since been closed in code.
+
 The one-line summary: **the app is ship-quality and the business is pre-product.
 Measure accuracy before you sell anything, do not price the scan, and win on
 knowing what day it is rather than on reading the sign.**

@@ -12,12 +12,14 @@ function formatTime(ms) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function useTimer() {
+export function useTimer({ onExpire } = {}) {
   const [isRunning, setIsRunning] = useState(false);
   const [remainingMs, setRemainingMs] = useState(0);
   const [totalMs, setTotalMs] = useState(0);
   const intervalRef = useRef(null);
   const endTimeRef = useRef(null);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   const stopInterval = useCallback(() => {
     if (intervalRef.current) {
@@ -38,6 +40,7 @@ export function useTimer() {
         stopInterval();
         TimerService.clear();
         NotificationService.sendExpired();
+        if (typeof onExpireRef.current === 'function') onExpireRef.current();
       } else {
         setRemainingMs(remaining);
       }

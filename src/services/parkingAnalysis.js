@@ -2,6 +2,8 @@
 // Calls the /api/analyze serverless proxy, which holds the OpenAI API key
 // server-side. Falls back to mock data if the proxy is unavailable or unconfigured.
 
+import { Identity } from './identity';
+
 // Belt-and-braces cap on the local image decode/resize step. This runs before
 // the fetch AbortController is created, so the 45s request timeout cannot
 // rescue a decode that never settles.
@@ -18,7 +20,7 @@ export class ParkingAnalysisService {
     try {
       response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...Identity.headers() },
         body: JSON.stringify({ imageData: optimizedImage, selectedSide }),
         signal: controller.signal,
       });
@@ -37,6 +39,9 @@ export class ParkingAnalysisService {
 
     if (response.status === 429) {
       const errorData = await response.json().catch(() => ({}));
+      if (errorData.error === 'quota') {
+        throw new Error(errorData.message || 'Daily scan limit reached. It resets at midnight Sydney time.');
+      }
       const wait = errorData.retryAfter ? ` Try again in ${errorData.retryAfter}s.` : '';
       throw new Error(`Too many requests — please wait a moment before trying again.${wait}`);
     }
@@ -111,29 +116,48 @@ export class ParkingAnalysisService {
     });
   }
 
+  // Demo data in the same shape the proxy returns. A 2P weekday sign: inside
+  // its hours you can park for two hours; outside them there is no limit.
   static async getMockResponse() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const now = new Date();
-    const hour = now.getHours();
-    const day = now.toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'Australia/Sydney' });
+    const sydney = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', weekday: 'short', hour: 'numeric', hour12: false })
+      .formatToParts(now)
+      .reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+    const hour = Number(sydney.hour) % 24;
+    const isWeekday = !['Sat', 'Sun'].includes(sydney.weekday);
+    const inHours = isWeekday && hour >= 9 && hour < 18;
 
-    const isWeekday = !['Saturday', 'Sunday'].includes(day);
-    const isDuringRestrictionHours = hour >= 9 && hour <= 18;
+    const plate = {
+      text: '2P 9AM-6PM MON-FRI', kind: 'time_limited', timeLimitMinutes: 120,
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], startMinutes: 540, endMinutes: 1080,
+      publicHolidayClause: 'silent', schoolDaysOnly: false, arrow: 'both',
+      paymentRequired: false, permitExcepted: false, vehicleTypes: [],
+    };
 
     return {
-      canPark: !(isWeekday && isDuringRestrictionHours),
-      timeLimit: isWeekday ? '2 hours' : null,
+      noSignFound: false,
+      canPark: true,
+      kind: inHours ? 'time_limited' : 'unrestricted',
+      timeLimit: inHours ? '2 hours' : null,
+      timeLimitMinutes: inHours ? 120 : null,
       days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
       hours: '9:00 AM - 6:00 PM',
-      paymentRequired: isWeekday && isDuringRestrictionHours,
-      vehicleTypes: ['Passenger vehicles'],
+      paymentRequired: false,
+      vehicleTypes: [],
       specialConditions: [],
       confidence: 0.85,
-      rawText: '2P 9AM-6PM MON-FRI COUNCIL AREA',
+      rawText: '2P 9AM-6PM MON-FRI',
       applicableSide: 'both',
-      estimatedFine: (isWeekday && isDuringRestrictionHours) ? null : '~$133',
-      timestamp: new Date().toISOString(),
+      estimatedFine: inHours ? '~$140' : null,
+      fine: inHours ? { kind: 'time_limited', amount: 140, display: '~$140', label: 'Exceed time limit', confidence: 'high', stale: false } : null,
+      plates: [plate],
+      timeline: [],
+      nextChange: null,
+      mustLeaveByMs: inHours ? now.getTime() + 120 * 60_000 : null,
+      calendar: { isPublicHoliday: false, holidayName: null, isSchoolDay: isWeekday, source: 'mock' },
+      timestamp: now.toISOString(),
       model: 'mock',
       isMockData: true,
     };

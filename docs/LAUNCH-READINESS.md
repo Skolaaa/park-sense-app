@@ -3,6 +3,33 @@
 Reviewed at `v0.5.0` plus the unreleased changes on `main` (commit `6da4c97`).
 This is the input to [PRICING.md](./PRICING.md) and [GO-TO-MARKET.md](./GO-TO-MARKET.md).
 
+## Status after the follow-up build
+
+The review below is kept as written. This table records what was done about it.
+
+| Blocker | Status | Where |
+|:--|:--|:--|
+| B1 No user identity | **Partly closed.** A per-install device id now meters scans and attributes community events. It is not an account, so purchase restore across devices still needs real auth when payments arrive. | `src/services/identity.js`, `api/_lib/request.js` |
+| B2 Open endpoint, per-instance limiter | **Closed.** IP limit kept as the fast layer; a per-device daily quota in Postgres (atomic, shared across instances) is the real ceiling, checked before the model call. Falls back to memory without a database. | `api/_lib/rateLimit.js`, `supabase/migrations/0001_init.sql` |
+| B3 No analytics | **Closed.** Named product events to PostHog over plain fetch when a token is set; no-op otherwise. | `src/services/analytics.js` |
+| B4 No privacy / terms / disclaimer | **Closed.** In-app Privacy and Terms written to what the code does, a disclaimer on every verdict, and an ACL-aware terms clause. Still needs a lawyer's read before a paid launch. | `src/components/LegalScreen.js` |
+| B5 No error monitoring | **Closed.** Uncaught errors, rejections and boundary catches post to `/api/report-error`, logged and optionally forwarded to Sentry. | `src/services/errorReporting.js`, `api/report-error.js` |
+| B6 Accuracy unmeasured | **Tooling closed, measurement open.** A harness over labelled cases and an outcome question after every timer. The 200 labelled signs still have to be photographed. | `scripts/eval-signs.js`, `eval/README.md`, `src/components/OutcomePrompt.js` |
+| B7 Wrong fine amounts | **Closed.** Dated, sourced schedule with per-line confidence and a stale flag. Clearway and bus-zone lines still need verifying against the primary schedule. | `api/_lib/fines.js` |
+| README stale | Closed | `README.md` |
+| No PNG icons / SVG og:image | Closed | `scripts/make-icons.js`, `public/` |
+| Sydney hardcoded | Open, but now isolated to `api/_lib/calendar.js` and `api/_lib/fines.js` | |
+| No service worker / push | Open. This is the planned paid feature. | |
+| No contact path | Closed: "Report a wrong reading" on every result | `src/components/WrongReadingForm.js` |
+
+Beyond the blockers, the build also shipped the first item from
+[COMPETITIVE-EDGE.md](./COMPETITIVE-EDGE.md): reg 318 and school-day
+resolution, plate-by-plate precedence in code, the forward timeline, and the
+opt-in community layer that the street-level and, later, availability
+features are built on.
+
+---
+
 ---
 
 ## 1. What actually exists today

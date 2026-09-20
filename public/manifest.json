@@ -1,6 +1,6 @@
 {
   "short_name": "ParkSense",
-  "name": "ParkSense — Sydney parking signs",
+  "name": "ParkSense \u2014 Sydney parking signs",
   "description": "Photograph a parking sign and get a straight answer on whether you can park.",
   "icons": [
     {
@@ -8,6 +8,24 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "start_url": ".",

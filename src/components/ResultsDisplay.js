@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Timer, RotateCcw, MapPin, Camera, Check, X, AlertTriangle, ImageOff } from 'lucide-react';
+import { Timer, RotateCcw, MapPin, Camera, Check, X, AlertTriangle, ImageOff, CalendarDays } from 'lucide-react';
 import { parseTimeLimit } from '../utils/timeParser';
 import TimerOverlay from './TimerOverlay';
+import Timeline from './Timeline';
+import StreetInsights from './StreetInsights';
+import WrongReadingForm from './WrongReadingForm';
 import { Screen, ScreenActions } from './Screen';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -24,6 +27,23 @@ const shortDays = (days) => {
 
 const SIDE_LABEL = { left: 'Left of the sign', right: 'Right of the sign', both: 'Both sides' };
 
+const KIND_LABEL = {
+  no_stopping: 'No Stopping is in force',
+  clearway: 'Clearway is in force',
+  bus_zone: 'Bus zone',
+  taxi_zone: 'Taxi zone',
+  works_zone: 'Works zone',
+  no_parking: 'No Parking is in force',
+  loading_zone: 'Loading zone',
+  disabled_only: 'Disability parking only',
+  permit_only: 'Permit holders only',
+};
+
+// Notes the engine wrote about the calendar are shown as their own callout,
+// because "today is a public holiday so this sign is off" is the headline,
+// not a footnote.
+const isCalendarNote = (s) => /reg 318|public holiday|school day|school holidays/i.test(s);
+
 const DetailRow = ({ label, children }) => (
   <div className="flex items-baseline justify-between gap-4 px-5 py-3 text-[15px]">
     <span className="text-muted-foreground">{label}</span>
@@ -42,6 +62,12 @@ const EmptyState = ({ icon: Icon, tone, title, children }) => (
   </div>
 );
 
+const Disclaimer = () => (
+  <p className="px-1 text-center text-xs leading-snug text-muted-foreground">
+    ParkSense can misread a sign. Check it yourself before you walk away.
+  </p>
+);
+
 const ResultsDisplay = ({
   analysisResult,
   onAnalyzeAnother,
@@ -49,6 +75,8 @@ const ResultsDisplay = ({
   onStartTimer,
   onStopTimer,
   onViewTimer,
+  onReportWrongReading,
+  communityEnabled = false,
   timerRunning,
   timerFormattedTime,
   timerWarningPhase,
@@ -62,24 +90,34 @@ const ResultsDisplay = ({
   const {
     noSignFound,
     canPark,
+    kind,
     timeLimit,
     days,
     hours,
     paymentRequired,
     vehicleTypes,
-    specialConditions,
+    specialConditions = [],
     confidence,
     rawText,
     applicableSide,
     estimatedFine,
+    fine,
     location,
     isMockData,
+    calendar,
+    timeline,
+    nextChange,
+    mustLeaveByMs,
+    sideAmbiguous,
   } = analysisResult;
 
   const parsedDurationMs = parseTimeLimit(timeLimit);
   const canShowTimer = canPark && timeLimit && parsedDurationMs;
   const isLowConfidence = confidence > 0 && confidence < 0.65;
   const confidencePct = Math.round(confidence * 100);
+
+  const calendarNotes = specialConditions.filter(isCalendarNote);
+  const otherNotes = specialConditions.filter((s) => !isCalendarNote(s));
 
   const overlay = timerRunning ? (
     <TimerOverlay
@@ -94,6 +132,10 @@ const ResultsDisplay = ({
     <Alert variant="warning" title="Demo mode">
       No API key is configured, so this is sample data.
     </Alert>
+  ) : null;
+
+  const feedback = onReportWrongReading ? (
+    <WrongReadingForm onSubmit={(text) => onReportWrongReading(analysisResult, text)} />
   ) : null;
 
   // ─── No sign in the frame ──────────────────────────────────────────────────
@@ -132,6 +174,13 @@ const ResultsDisplay = ({
                 <Badge variant="warning">{confidencePct}% confident</Badge>
               </div>
               <p className="mt-2 text-[15px] leading-snug text-muted-foreground">“{rawText}”</p>
+              {otherNotes.length > 0 && (
+                <ul className="mt-3 grid gap-1.5 text-sm leading-snug text-muted-foreground">
+                  {otherNotes.map((n) => (
+                    <li key={n} className="flex gap-2"><span aria-hidden="true">•</span>{n}</li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         )}
@@ -145,6 +194,7 @@ const ResultsDisplay = ({
           <Button variant="ghost" onClick={() => setOverrideLowConfidence(true)}>
             Show the result anyway
           </Button>
+          {feedback}
         </ScreenActions>
         {overlay}
       </Screen>
@@ -152,11 +202,14 @@ const ResultsDisplay = ({
   }
 
   // ─── Full verdict ──────────────────────────────────────────────────────────
-  const expiresAt = parsedDurationMs ? sydneyTime(Date.now() + parsedDurationMs) : null;
+  const leaveBy = mustLeaveByMs ?? (parsedDurationMs ? Date.now() + parsedDurationMs : null);
+  const leaveByLabel = leaveBy ? sydneyTime(leaveBy) : null;
+  const opensAt = !canPark && nextChange?.canPark ? sydneyTime(nextChange.atMs) : null;
+  const closesAt = canPark && nextChange && !nextChange.canPark ? sydneyTime(nextChange.atMs) : null;
 
   const summary = canPark
-    ? [timeLimit ? `${timeLimit} limit` : 'No limit posted', expiresAt && `until ${expiresAt}`, paymentRequired && 'payment required']
-    : [specialConditions?.[0] || 'Restrictions are in force right now', estimatedFine && `fine ${estimatedFine}`];
+    ? [timeLimit ? `${timeLimit} limit` : 'No limit posted', leaveByLabel && `leave by ${leaveByLabel}`, paymentRequired && 'payment required']
+    : [KIND_LABEL[kind] || 'Restrictions are in force right now', opensAt && `opens ${opensAt}`, estimatedFine && `fine ${estimatedFine}`];
 
   return (
     <Screen className={timerRunning ? 'pb-24' : ''}>
@@ -185,6 +238,18 @@ const ResultsDisplay = ({
         <p className="mt-4 text-xs opacity-70">Checked at {sydneyTime()} Sydney time</p>
       </section>
 
+      {calendarNotes.length > 0 && (
+        <Alert className="mt-4" title={calendar?.isPublicHoliday ? `Public holiday${calendar.holidayName ? ` — ${calendar.holidayName}` : ''}` : 'Not a school day'}>
+          {calendarNotes.map((n) => <p key={n}>{n}</p>)}
+        </Alert>
+      )}
+
+      {sideAmbiguous && (
+        <Alert className="mt-4" variant="warning" title="Which side are you on?">
+          The arrows on this sign point both ways, so the strictest rule is shown. Rescan and pick your side for a precise answer.
+        </Alert>
+      )}
+
       <Card className="mt-4">
         <div className="flex items-center justify-between px-5 pt-4 pb-1">
           <h2 className="text-sm font-semibold">Sign details</h2>
@@ -192,22 +257,35 @@ const ResultsDisplay = ({
         </div>
         <div className="divide-y divide-border">
           {timeLimit && <DetailRow label="Limit">{timeLimit}</DetailRow>}
+          {leaveByLabel && canPark && <DetailRow label="Leave by">{leaveByLabel}</DetailRow>}
+          {closesAt && !timeLimit && <DetailRow label="Restriction starts">{closesAt}</DetailRow>}
+          {opensAt && <DetailRow label="Parking opens">{opensAt}</DetailRow>}
           {hours && <DetailRow label="Hours">{hours}</DetailRow>}
           {days?.length > 0 && <DetailRow label="Days">{shortDays(days)}</DetailRow>}
           {SIDE_LABEL[applicableSide] && <DetailRow label="Applies to">{SIDE_LABEL[applicableSide]}</DetailRow>}
           {paymentRequired && <DetailRow label="Payment">Required</DetailRow>}
           {vehicleTypes?.length > 0 && <DetailRow label="Vehicles">{vehicleTypes.join(', ')}</DetailRow>}
-          {!canPark && estimatedFine && (
-            <DetailRow label="Fine if caught">
-              <span className="text-destructive">{estimatedFine}</span>
+          {estimatedFine && (
+            <DetailRow label={canPark ? 'Fine if you overstay' : 'Fine if caught'}>
+              <span className={canPark ? '' : 'text-destructive'}>{estimatedFine}</span>
+              {fine?.stale && <span className="block text-xs font-normal text-muted-foreground">may be out of date</span>}
             </DetailRow>
           )}
         </div>
+        {timeline?.length > 1 && (
+          <>
+            <p className="flex items-center gap-1.5 px-5 pt-3 text-xs font-medium text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+              Next 12 hours
+            </p>
+            <Timeline bands={timeline} />
+          </>
+        )}
       </Card>
 
-      {specialConditions?.length > (canPark ? 0 : 1) && (
+      {otherNotes.length > 0 && (
         <ul className="mt-4 grid gap-1.5 px-1 text-sm leading-snug text-muted-foreground">
-          {specialConditions.slice(canPark ? 0 : 1).map((condition) => (
+          {otherNotes.map((condition) => (
             <li key={condition} className="flex gap-2">
               <span aria-hidden="true">•</span>
               {condition}
@@ -228,8 +306,11 @@ const ResultsDisplay = ({
         </div>
       )}
 
+      <StreetInsights location={location} enabled={communityEnabled} />
+
       <ScreenActions>
         {mockNotice}
+        <Disclaimer />
 
         {/* While a timer runs, the floating TimerOverlay is the timer control. */}
         {canShowTimer && !timerRunning && (
@@ -243,6 +324,7 @@ const ResultsDisplay = ({
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Scan another sign
         </Button>
+        {feedback}
       </ScreenActions>
       {overlay}
     </Screen>

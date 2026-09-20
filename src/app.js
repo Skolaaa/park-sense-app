@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Camera, ScanLine, Footprints, CheckCircle2, Timer, ChevronRight } from 'lucide-react';
 import CameraCapture from './components/CameraCapture';
 import ImageAnalysis from './components/ImageAnalysis';
@@ -6,6 +6,9 @@ import ResultsDisplay from './components/ResultsDisplay';
 import SideSelection from './components/SideSelection';
 import ParkingTimer from './components/ParkingTimer';
 import NotificationBanner from './components/NotificationBanner';
+import LegalScreen from './components/LegalScreen';
+import CommunityConsentCard from './components/CommunityConsentCard';
+import OutcomePrompt from './components/OutcomePrompt';
 import { Screen, ScreenActions } from './components/Screen';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
@@ -14,6 +17,11 @@ import { Card, CardContent } from './components/ui/card';
 import { ParkingAnalysisService } from './services/parkingAnalysis';
 import { LocationService } from './services/locationService';
 import { NotificationService } from './services/notificationService';
+import { CommunityService } from './services/communityService';
+import { OutcomeService } from './services/outcomeService';
+import { Consent } from './services/consent';
+import { Analytics, EVENTS } from './services/analytics';
+import { ErrorReporting } from './services/errorReporting';
 import { useTimer } from './hooks/useTimer';
 import { VIEW_STATES, APP_CONFIG } from './utils/constants';
 
@@ -30,6 +38,17 @@ const App = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [inAppWarning, setInAppWarning] = useState(false);
+  const [consent, setConsent] = useState(() => Consent.get());
+  const [scanCount, setScanCount] = useState(0);
+  const [pendingOutcome, setPendingOutcome] = useState(() => OutcomeService.pending());
+  const [legalReturnView, setLegalReturnView] = useState(VIEW_STATES.HOME);
+
+  const refreshPendingOutcome = useCallback(() => setPendingOutcome(OutcomeService.pending()), []);
+
+  const handleTimerExpired = useCallback(() => {
+    OutcomeService.end();
+    refreshPendingOutcome();
+  }, [refreshPendingOutcome]);
 
   const {
     isRunning: timerRunning,
@@ -40,7 +59,11 @@ const App = () => {
     isWarningPhase,
     startTimer,
     stopTimer,
-  } = useTimer();
+  } = useTimer({ onExpire: handleTimerExpired });
+
+  useEffect(() => {
+    ErrorReporting.setView(currentView);
+  }, [currentView]);
 
   // ─── Camera handlers ────────────────────────────────────────────────────────
 
@@ -75,22 +98,33 @@ const App = () => {
     setCurrentView(VIEW_STATES.ANALYZING);
     setApiError(null);
 
+    Analytics.track(EVENTS.SCAN_STARTED, { side: side ?? 'unknown' });
     try {
       const result = await ParkingAnalysisService.analyzeImage(capturedImage, side);
 
-      // Attach location in the background — don't block the result.
+      // Attach location in the background — don't block the result. The
+      // community scan event waits for it, because a scan with no street is
+      // no use to anyone.
       LocationService.getCurrentAddress().then((location) => {
         if (location) {
           setAnalysisResult((prev) => prev ? { ...prev, location } : { ...result, location });
+          if (!result.isMockData) CommunityService.recordScan({ ...result, location });
         }
       }).catch(() => {});
 
       setAnalysisResult(result);
+      setScanCount((n) => n + 1);
       setCurrentView(VIEW_STATES.RESULTS);
+      Analytics.track(EVENTS.SCAN_COMPLETED, {
+        can_park: result.canPark, kind: result.kind ?? null, confidence: result.confidence,
+        no_sign: !!result.noSignFound, mock: !!result.isMockData,
+        public_holiday: !!result.calendar?.isPublicHoliday, side_ambiguous: !!result.sideAmbiguous,
+      });
     } catch (error) {
       console.error('Analysis error:', error);
       setApiError(error.message);
       setCurrentView(VIEW_STATES.PREVIEW);
+      Analytics.track(EVENTS.SCAN_FAILED, { message: String(error.message).slice(0, 80) });
     } finally {
       setIsAnalyzing(false);
     }
@@ -110,12 +144,43 @@ const App = () => {
     if (permission !== 'granted') setInAppWarning(true);
     startTimer(durationMs);
     NotificationService.scheduleWarning(durationMs);
+    OutcomeService.begin(analysisResult, durationMs);
+    if (!analysisResult?.isMockData) CommunityService.recordTimerStart(analysisResult, durationMs);
+    Analytics.track(EVENTS.TIMER_STARTED, { duration_min: Math.round(durationMs / 60000), notifications: permission });
   };
 
   const handleStopTimer = () => {
+    const elapsedMs = totalMs > 0 ? totalMs - remainingMs : 0;
     stopTimer();
     NotificationService.cancelScheduled();
     setInAppWarning(false);
+    OutcomeService.end();
+    refreshPendingOutcome();
+    if (!analysisResult?.isMockData) CommunityService.recordTimerStop(analysisResult, elapsedMs);
+    Analytics.track(EVENTS.TIMER_STOPPED, { elapsed_min: Math.round(elapsedMs / 60000) });
+  };
+
+  const handleOutcome = (outcome) => {
+    if (pendingOutcome) CommunityService.recordOutcome(pendingOutcome, outcome);
+    Analytics.track(EVENTS.OUTCOME_REPORTED, { outcome });
+    OutcomeService.clear();
+    setPendingOutcome(null);
+  };
+
+  const handleReportWrongReading = (result, text) => {
+    CommunityService.reportWrongReading(result, text);
+    Analytics.track(EVENTS.FEEDBACK_SENT, { can_park: result?.canPark ?? null, kind: result?.kind ?? null });
+  };
+
+  const handleConsent = (value) => {
+    Consent.set(value);
+    setConsent(value);
+    Analytics.track(EVENTS.CONSENT_CHANGED, { value });
+  };
+
+  const openLegal = (view) => {
+    setLegalReturnView(currentView === VIEW_STATES.PRIVACY || currentView === VIEW_STATES.TERMS ? VIEW_STATES.HOME : currentView);
+    setCurrentView(view);
   };
 
   const handleViewTimer = () => setCurrentView(VIEW_STATES.TIMER);
@@ -176,6 +241,14 @@ const App = () => {
           </Alert>
         )}
 
+        {pendingOutcome && !timerRunning && (
+          <OutcomePrompt session={pendingOutcome} onAnswer={handleOutcome} />
+        )}
+
+        {consent === null && scanCount > 0 && (
+          <CommunityConsentCard onDecide={handleConsent} onShowPrivacy={() => openLegal(VIEW_STATES.PRIVACY)} />
+        )}
+
         {timerRunning && (
           <button
             onClick={handleViewTimer}
@@ -209,6 +282,19 @@ const App = () => {
 
         <p className="text-center text-xs text-muted-foreground">
           v{APP_CONFIG.version} · Sydney parking rules
+        </p>
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-muted-foreground">
+          <button type="button" className="underline underline-offset-2" onClick={() => openLegal(VIEW_STATES.PRIVACY)}>Privacy</button>
+          <button type="button" className="underline underline-offset-2" onClick={() => openLegal(VIEW_STATES.TERMS)}>Terms</button>
+          {consent !== null && (
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={() => handleConsent(consent === 'granted' ? 'declined' : 'granted')}
+            >
+              Community data: {consent === 'granted' ? 'on' : 'off'}
+            </button>
+          )}
         </p>
       </ScreenActions>
     </Screen>
@@ -257,9 +343,20 @@ const App = () => {
             onStartTimer={handleStartTimer}
             onStopTimer={handleStopTimer}
             onViewTimer={handleViewTimer}
+            onReportWrongReading={handleReportWrongReading}
+            communityEnabled={consent === 'granted'}
             timerRunning={timerRunning}
             timerFormattedTime={timerFormattedTime}
             timerWarningPhase={isWarningPhase}
+          />
+        );
+
+      case VIEW_STATES.PRIVACY:
+      case VIEW_STATES.TERMS:
+        return (
+          <LegalScreen
+            kind={currentView === VIEW_STATES.PRIVACY ? 'privacy' : 'terms'}
+            onBack={() => setCurrentView(legalReturnView)}
           />
         );
 

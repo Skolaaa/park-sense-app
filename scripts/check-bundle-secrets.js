@@ -20,7 +20,9 @@ const API_DIR = path.join(__dirname, '..', 'api');
 
 // Values that are public by design. Mapbox `pk.` tokens are publishable and are
 // meant to ship to the browser; they are restricted by URL, not by secrecy.
-const ALLOWED_CLIENT_VARS = new Set(['REACT_APP_MAPBOX_ACCESS_TOKEN']);
+// PostHog *project* tokens (phc_…) are likewise write-only and publishable —
+// they can record events and nothing else.
+const ALLOWED_CLIENT_VARS = new Set(['REACT_APP_MAPBOX_ACCESS_TOKEN', 'REACT_APP_POSTHOG_PUBLIC_TOKEN']);
 
 const SECRET_PATTERNS = [
   { name: 'OpenAI key', re: /\bsk-(proj-)?[A-Za-z0-9_-]{20,}/ },

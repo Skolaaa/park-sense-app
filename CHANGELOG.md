@@ -10,6 +10,54 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 
 ## [Unreleased]
 
+### Added
+- ParkSense now knows what day it is. On a NSW public holiday, a sign that
+  lists particular days (such as "Mon–Fri") is treated as not applying, which
+  is what Road Rules 2014 reg 318 says, and the result explains why. "School
+  Days" restrictions are only applied on school days, using the NSW term
+  dates. Every other app in this category answers from the photo alone.
+- A twelve-hour strip on every result showing when you can and cannot park
+  from now, and a "leave by" time that takes into account both the posted
+  limit and the next restriction. "No parking right now" results say when
+  parking opens.
+- Stacked signs are read plate by plate and combined with the right
+  precedence: No Stopping beats a clearway, which beats a time limit. If a
+  plate cannot be classified the app says so and asks you to check, instead
+  of quietly guessing.
+- Community data, off by default. If you opt in, the app shares when and
+  where you scan and park, rounded to the street and with no photo, and
+  shows you what other drivers found on the same street: the usual limit,
+  how often the verdict was "no", and when people actually park there. With
+  enough data it shows activity by hour of day, labelled as what it is.
+- After a parking timer ends, the app asks whether you got a fine. The answer
+  is anonymous and is the only real measure of whether the readings are right.
+- "Report a wrong reading" on every result.
+- Privacy and Terms, written in plain language and reachable from the home
+  screen. The result screen now carries a short reminder to check the sign
+  yourself.
+- A daily scan limit per device, so one install cannot run up an unbounded
+  bill. It resets at midnight Sydney time and the app tells you when you hit it.
+- Proper PNG app icons (including a maskable icon for Android) and a real
+  social preview image, so installing the app and sharing a link both look
+  right.
+
+### Changed
+- The app no longer asks the model whether you can park. The model only
+  transcribes the sign; the decision is made in code from the calendar, the
+  arrows and the plate precedence. Same photo, more consistent answer.
+- The demo-mode sample result now matches how a 2P sign actually works: you
+  can park during its hours, for two hours.
+
+### Fixed
+- Fine amounts were wrong. A No Parking offence was quoted at ~$344 when it
+  is about $140, and a time-limit fine at ~$133 when it is about $140. Every
+  amount now comes from a dated schedule that flags itself for review after
+  the next NSW indexation.
+- The 15-minute warning notification pointed at an icon file that did not
+  exist.
+- The README documented a client-side API key that the app stopped using
+  months ago.
+
 ### Security
 - The build now fails if a credential reaches the client bundle, or if client
   code reads a `REACT_APP_*` variable whose name implies a secret. This runs as

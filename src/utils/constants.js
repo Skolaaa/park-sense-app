@@ -36,6 +36,8 @@ export const VIEW_STATES = {
   ANALYZING: 'analyzing',
   RESULTS: 'results',
   TIMER: 'timer',
+  PRIVACY: 'privacy',
+  TERMS: 'terms',
 };
 
 export const TIMER_CONFIG = {

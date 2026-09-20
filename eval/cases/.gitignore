@@ -1,0 +1,4 @@
+# Photos stay out of the repository; commit only the labelled JSON.
+*.jpg
+*.jpeg
+*.png
