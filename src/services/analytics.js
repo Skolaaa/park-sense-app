@@ -56,4 +56,8 @@ export const EVENTS = {
   OUTCOME_REPORTED: 'outcome_reported',
   FEEDBACK_SENT: 'feedback_sent',
   CONSENT_CHANGED: 'consent_changed',
+  RESULT_SHARED: 'result_shared',
+  EMAIL_CAPTURED: 'email_captured',
+  APP_INSTALLED: 'app_installed',
+  REMINDER_SCHEDULED: 'reminder_scheduled',
 };

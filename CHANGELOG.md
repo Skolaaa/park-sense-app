@@ -11,6 +11,24 @@ patch version carries fixes; nothing here is treated as a stable public API yet.
 ## [Unreleased]
 
 ### Added
+- ParkSense can be added to your home screen and works as an app: it opens
+  full screen, loads offline, and tells you when a new version is ready.
+- Parking reminders that reach you with the app closed. Once installed, the
+  15-minute warning and the expiry arrive as push notifications from the
+  server, so the phone can be in a pocket. In a plain browser tab the
+  warning still fires while the tab is open.
+- Recent scans. The last twenty results are kept on the device with a small
+  thumbnail, listed on the home screen, and can be reopened. Reopened results
+  say when they were checked and do not offer a timer.
+- A Settings screen: reminders, community data, install, early access,
+  privacy and terms, version, and a single button that clears everything on
+  the device.
+- Share a result as a sentence, through the phone's share sheet or the
+  clipboard.
+- Early access: leave an email in the app and everything ParkSense adds later
+  stays free on that device.
+- A short vibration with the verdict, so a yes or a no can be felt without
+  looking at the screen.
 - ParkSense now knows what day it is. On a NSW public holiday, a sign that
   lists particular days (such as "Mon–Fri") is treated as not applying, which
   is what Road Rules 2014 reg 318 says, and the result explains why. "School

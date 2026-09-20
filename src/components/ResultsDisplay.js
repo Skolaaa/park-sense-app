@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Timer, RotateCcw, MapPin, Camera, Check, X, AlertTriangle, ImageOff, CalendarDays } from 'lucide-react';
+import { Timer, RotateCcw, MapPin, Camera, Check, X, AlertTriangle, ImageOff, CalendarDays, Share2, ChevronLeft } from 'lucide-react';
 import { parseTimeLimit } from '../utils/timeParser';
 import TimerOverlay from './TimerOverlay';
 import Timeline from './Timeline';
@@ -70,7 +70,10 @@ const Disclaimer = () => (
 
 const ResultsDisplay = ({
   analysisResult,
+  historical = false,
+  onBack,
   onAnalyzeAnother,
+  onShare,
   showMockWarning = false,
   onStartTimer,
   onStopTimer,
@@ -112,7 +115,8 @@ const ResultsDisplay = ({
   } = analysisResult;
 
   const parsedDurationMs = parseTimeLimit(timeLimit);
-  const canShowTimer = canPark && timeLimit && parsedDurationMs;
+  const canShowTimer = !historical && canPark && timeLimit && parsedDurationMs;
+  const checkedAtMs = historical && analysisResult.timestamp ? Date.parse(analysisResult.timestamp) : Date.now();
   const isLowConfidence = confidence > 0 && confidence < 0.65;
   const confidencePct = Math.round(confidence * 100);
 
@@ -202,7 +206,7 @@ const ResultsDisplay = ({
   }
 
   // ─── Full verdict ──────────────────────────────────────────────────────────
-  const leaveBy = mustLeaveByMs ?? (parsedDurationMs ? Date.now() + parsedDurationMs : null);
+  const leaveBy = historical ? null : (mustLeaveByMs ?? (parsedDurationMs ? Date.now() + parsedDurationMs : null));
   const leaveByLabel = leaveBy ? sydneyTime(leaveBy) : null;
   const opensAt = !canPark && nextChange?.canPark ? sydneyTime(nextChange.atMs) : null;
   const closesAt = canPark && nextChange && !nextChange.canPark ? sydneyTime(nextChange.atMs) : null;
@@ -213,7 +217,16 @@ const ResultsDisplay = ({
 
   return (
     <Screen className={timerRunning ? 'pb-24' : ''}>
-      <div className="pt-6" />
+      {onBack ? (
+        <div className="pt-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="-ml-3 px-2 font-medium">
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+            Back
+          </Button>
+        </div>
+      ) : (
+        <div className="pt-6" />
+      )}
 
       {/* The verdict is the only loud thing on the screen, sized to be read at
           arm's length on a bright street. */}
@@ -235,8 +248,17 @@ const ResultsDisplay = ({
         <p className="mt-2 text-[15px] leading-snug opacity-90">
           {summary.filter(Boolean).join(' · ')}
         </p>
-        <p className="mt-4 text-xs opacity-70">Checked at {sydneyTime()} Sydney time</p>
+        <p className="mt-4 text-xs opacity-70">
+          {historical ? `Checked ${new Date(checkedAtMs).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Australia/Sydney' })} at ` : 'Checked at '}
+          {sydneyTime(checkedAtMs)} Sydney time
+        </p>
       </section>
+
+      {historical && (
+        <Alert className="mt-4" title="An earlier result">
+          This is what the sign meant when you scanned it. Rescan for a current answer.
+        </Alert>
+      )}
 
       {calendarNotes.length > 0 && (
         <Alert className="mt-4" title={calendar?.isPublicHoliday ? `Public holiday${calendar.holidayName ? ` — ${calendar.holidayName}` : ''}` : 'Not a school day'}>
@@ -320,10 +342,17 @@ const ResultsDisplay = ({
           </Button>
         )}
 
-        <Button variant={canShowTimer && !timerRunning ? 'outline' : 'default'} onClick={onAnalyzeAnother}>
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          Scan another sign
-        </Button>
+        <div className="grid grid-cols-[1fr_auto] gap-2.5">
+          <Button variant={canShowTimer && !timerRunning ? 'outline' : 'default'} onClick={onAnalyzeAnother}>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Scan another sign
+          </Button>
+          {onShare && (
+            <Button variant="outline" size="icon" className="h-12 w-12" aria-label="Share this result" onClick={() => onShare(analysisResult)}>
+              <Share2 className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
         {feedback}
       </ScreenActions>
       {overlay}

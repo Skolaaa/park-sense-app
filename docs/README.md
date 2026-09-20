@@ -15,6 +15,9 @@ Read in order:
    launch day, the first 90 days, and the five metrics that decide it.
 4. **[COMPETITIVE-EDGE.md](./COMPETITIVE-EDGE.md)** — what to build to beat a
    field of competitors that already exists, and what to refuse to build.
+5. **[PERSONAS.md](./PERSONAS.md)**, **[METRICS.md](./METRICS.md)**,
+   **[LANDING-PAGE.md](./LANDING-PAGE.md)** — who it is for, the five numbers
+   reviewed every Monday, and the landing page copy the plan calls for.
 
 The status table at the top of LAUNCH-READINESS.md records which of the
 blockers have since been closed in code.

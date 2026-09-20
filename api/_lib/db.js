@@ -56,3 +56,15 @@ export async function select(table, query, opts) {
 export async function rpc(fn, args, opts) {
   return call(`rpc/${fn}`, { method: 'POST', body: args, ...opts });
 }
+
+// `filter` is a PostgREST filter string, e.g. 'device_hash=eq.abc'. A filter
+// is required on purpose: an unfiltered DELETE or PATCH would touch every row.
+export async function del(table, filter, opts) {
+  if (!filter) throw new Error('del requires a filter');
+  return call(`${table}?${filter}`, { method: 'DELETE', prefer: 'return=minimal', ...opts });
+}
+
+export async function update(table, filter, patch, opts) {
+  if (!filter) throw new Error('update requires a filter');
+  return call(`${table}?${filter}`, { method: 'PATCH', body: patch, prefer: 'return=minimal', ...opts });
+}

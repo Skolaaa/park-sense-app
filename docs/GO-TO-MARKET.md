@@ -1,132 +1,299 @@
-# ParkSense — Release & Go-To-Market Plan
+# ParkSense — Go-To-Market Plan
 
 Produced with `/founder:go-to-market` from
-[emotixco/claude-skills-founder](https://github.com/emotixco/claude-skills-founder).
-Assumes [LAUNCH-READINESS.md](./LAUNCH-READINESS.md) and
-[PRICING.md](./PRICING.md).
+[emotixco/claude-skills-founder](https://github.com/emotixco/claude-skills-founder),
+second edition. Written against the app as it now ships: verdicts decided in
+code from the NSW calendar, a 12-hour timeline, push reminders that reach a
+closed tab, an installable web app, history, an in-app early-access list,
+sharing, and an opt-in community layer. Companion documents:
+[PRICING.md](./PRICING.md), [COMPETITIVE-EDGE.md](./COMPETITIVE-EDGE.md),
+[PERSONAS.md](./PERSONAS.md), [METRICS.md](./METRICS.md),
+[LANDING-PAGE.md](./LANDING-PAGE.md). Dates assume today is 20 September 2026.
 
 ---
 
-## 1. Launch readiness check
+## 0. The bet, stated plainly
 
-**Is the MVP sufficient to launch?** As a free product, yes — the core loop works end to end. As a *product*, no, and the gap is five items, not forty:
+The field of AI sign readers is real but shallow: global wrappers around a
+vision model, competing on nothing. The bet here is that **a product that is
+right on the days they are wrong, put in front of Sydney drivers at the
+moment they need it, beats them on marketing and placement rather than on
+features.** This plan is built around that bet. The product side of it is
+done; what follows is the placement.
 
-| Must ship before launch | Why it is non-negotiable |
+Three things make the bet credible rather than hopeful:
+
+1. **A claim no one else can make.** "The only parking app in Sydney that
+   knows what day it is" is true, verifiable, and cites a regulation. It is
+   also the kind of line a radio host repeats.
+2. **A calendar of free launch moments.** Every NSW public holiday is a day
+   when every "Mon–Fri" sign in the state is void and every competitor says
+   otherwise. There are two before Christmas and three in the fortnight
+   after. Each is a post that writes itself.
+3. **A loop that grows the corpus.** Share, the worst-sign contest, and the
+   "did you get a fine?" question all feed the accuracy dataset that no
+   rival has. Marketing here is not separate from product quality; it is how
+   the product gets better.
+
+## 1. Launch readiness
+
+| Requirement | State |
 |:--|:--|
-| Analytics (B3) | Launching without instrumentation means the launch teaches you nothing. This is the cheapest item and the one most often skipped. |
-| Auth + a real quota on `/api/analyze` (B1, B2) | A successful launch day on an open endpoint is an unbounded OpenAI bill. Success is the failure mode. |
-| Privacy policy, terms, in-app disclaimer (B4) | The app sends a photograph and a GPS coordinate to a third party with no disclosure. Not optional, and not only for the app stores — under ACL s64 the disclaimer alone does not limit liability, so the in-flow "check the sign yourself" prompt matters more than the terms page. |
-| Correct fine amounts (B7) | The app currently quotes ~$344 for a No Parking offence that is about $140. Launching with a wrong number in the most quotable field in the product is an avoidable own goal. |
-| Error monitoring (B5) | A prompt regression on launch day is otherwise invisible until Reddit tells you. |
+| Core loop, verdict engine, timeline, calendar rules | Shipped |
+| Installable web app, offline shell, push reminders | Shipped (needs VAPID keys, database, a once-a-minute trigger; see README) |
+| Analytics, error intake, quota, privacy, terms, disclaimer | Shipped (needs the environment variables set) |
+| Email capture for the grandfather offer | Shipped, in-app and via `/api/subscribe` |
+| **Measured accuracy** | **Not done.** The harness exists; the 200 labelled signs do not. |
+| Fine schedule verified against the primary source | Two lines still unverified (clearway, bus zone) |
+| Landing page live | Copy written; page not built |
 
-Everything else — the service worker, the PNG icons, the README fix, the Open Graph image — is a week of work and should be done, but would not stop a launch.
+**The one blocker is the accuracy number.** Nothing in section 4 goes out
+until `scripts/eval-signs.js` has run over at least 200 signs and the number
+is known, because the number *is* the launch message. The plan below
+schedules that first.
 
-**TAM sanity check.** NSW had about [5.9 million registered vehicles](https://www.abs.gov.au/statistics/industry/tourism-and-transport/motor-vehicle-census-australia/latest-release) at the 2021 ABS census, and Sydney councils issue infringements in the hundreds of thousands per year. The addressable group is narrower than "everyone who drives": it is people who regularly park on unfamiliar inner-Sydney streets. Call it **200,000–400,000 people**. Enough to support the break-even in PRICING.md many times over. Not enough to be a venture business on Sydney alone.
+**Biggest risk:** one credible story of a driver fined because ParkSense said
+yes. Mitigations shipped: the disclaimer on every verdict, abstention below
+65% confidence, "report a wrong reading", and the outcome question. The
+remaining mitigation is procedural: no paid reach until the accuracy gate in
+PRICING.md §6 is passed.
 
-**The biggest risk that could kill the launch.** Not competition, not distribution. It is **one credible story of someone fined because ParkSense said yes.** That story ends the product, and it is likeliest in week one when volume is highest and accuracy is least understood. Everything below is arranged so accuracy is measured *before* reach is bought.
+## 2. Distribution: web app first, and why
 
-**Release vehicle: ship the web app first, wrap for the stores later.** No review queue, no 15% cut, instant fixes on a product whose prompt will change weekly in the first month. Install to home screen via the PWA manifest. Move to the App Store and Play Store only once the four gates in PRICING.md §6 are passed — at that point you are shipping a product you can describe accurately in a store listing, which is also when a store listing starts working as a channel.
+The user asked whether a web app is the better form. For this product, at
+this stage, yes, and the app now ships that way.
 
-## 2. Pre-launch (4 weeks out)
+| | Installable web app (now) | Native via App Store / Play |
+|:--|:--|:--|
+| Time from footpath to first result | One tap on a link; no install | Store page, install, open |
+| Ship a prompt or rule fix | Minutes | Days (review) |
+| Revenue cut | 0% | 15% (30% above US$1M) |
+| Camera, GPS, notifications | All supported; push on Android in the browser, on iOS once added to the home screen | Same |
+| Discoverability | Search, links, QR codes, sharing | Store search for "parking sign" |
+| Trust signal | Weaker for some users | Stronger |
+| Cost to maintain | One codebase | One codebase plus two store listings and signing |
 
-**Where the audience already is:**
+**Decision.** Ship and market the web app for the first 90 days. The
+friction that matters at launch is *first result*, and a link beats a store
+page every time. The one iOS caveat is real: push reminders need the app
+added to the home screen, so the app explains that at the exact moment it
+matters (Settings, and the install card after the first scan). Wrap with
+Capacitor and list in both stores **after** the four gates in PRICING.md §6
+pass. At that point the store listing is a channel, not a runtime, and the
+paid tier exists to justify the cut.
 
-- [r/sydney](https://reddit.com/r/sydney) — the single highest-value venue. Parking sign confusion is a recurring genre there. Read the self-promotion rules before posting; the successful format is a person who built a thing, not a launch.
-- [r/AusLegal](https://reddit.com/r/AusLegal) — where people go *after* the fine. Different, angrier, higher-intent audience.
-- [r/CarsAustralia](https://reddit.com/r/CarsAustralia), [r/newsouthwales](https://reddit.com/r/newsouthwales)
-- Suburb Facebook groups — Inner West, Surry Hills, Newtown, Bondi. Parking is the permanent top-three topic in every one of them.
-- TikTok and Instagram Reels under `#sydney` and `#sydneyparking`. Confusing-sign content already performs there without anyone building an app.
+## 3. Who it is for, in one line each
 
-**Content to post before launch (build credibility, sell nothing):**
+From [PERSONAS.md](./PERSONAS.md): **Priya**, the inner-west renter who moves
+the car on school days and public holidays whether or not it matters, is the
+launch target because she is already on r/sydney and Reels and she scans
+three times a week. **Dave**, the sole-trader plumber with $1,500 a year in
+fines, is the Fleet buyer and is reached by outbound, not posts. **Megan**,
+the occasional CBD driver, arrives through search on her own once the
+articles rank.
 
-1. **"I photographed 200 Sydney parking signs and got an AI to read them. It was right 8 times out of 10."** Blog post plus the raw data. This is the credibility asset and it doubles as the accuracy measurement B6 requires.
-2. **A short video decoding one genuinely awful CBD sign** — the kind with four plates and two arrows. No app mention. Post to TikTok, Reels, and r/sydney.
-3. **"No Stopping vs No Parking: a $190 difference"** — around $330 versus around $140, the single most-searched confusion in NSW. Verify the current amounts against the Transport for NSW schedule before publishing; they are indexed every 1 July.
-4. **A weekly "can you read this sign?" poll** on Instagram Stories and Twitter. Cheap, repeatable, and it collects labelled examples.
-5. **One LinkedIn post aimed at fleet managers** — "what parking fines actually cost a courier fleet per vehicle per year". This seeds the Fleet tier months before you sell it.
+## 4. Pre-launch: 21 September to 16 October
 
-**Waitlist: no.** A waitlist for a free web app adds a step between a person and the thing. Ship the URL. Collect emails *after* the first scan, in exchange for the grandfathered Plus offer — that converts far better than a pre-launch form because the person has already seen it work.
+Launch is **Saturday 17 October, 8am AEST.** Four weeks out; the two
+holidays before it are the rehearsal.
 
-**Assets to prepare:**
+### Week 1 (21–27 Sep): the number
 
-- **Landing page** (see the `/founder:landing-page` skill for full copy): hero with a real Sydney sign photo and the verdict overlaid; a live "try it now" scan that works without signup; the measured accuracy number stated plainly *with* its error rate; the directional-arrow explainer as the differentiator section; the grandfather offer; privacy in plain English — where the photo goes and how long it is kept.
-- **Demo video: 15 seconds, vertical, no narration.** Walk up to a sign, photograph it, verdict appears, timer starts. The product's entire value is legible without a word of explanation, so do not add words.
-- **Social proof before customers:** the accuracy study is the proof. "Independently measured against 200 labelled Sydney signs" outperforms five testimonials, and unlike testimonials you can produce it yourself this month.
+- Set every environment variable, run both migrations, generate VAPID keys,
+  configure the once-a-minute trigger. Confirm a push reminder arrives on an
+  installed iPhone and an Android with the app closed.
+- **Saturday 26 Sep: photograph 200 signs.** CBD, Surry Hills, Newtown,
+  Marrickville, Bondi, and two school zones. Record the correct reading for
+  each on the spot. This is the $150 line in the budget if someone else
+  walks it. Label in `eval/cases/`, run the harness, fix the largest failure
+  class, run it again. **Publish nothing until this is done.**
+- Build the landing page from [LANDING-PAGE.md](./LANDING-PAGE.md) with the
+  measured number in the hero. Same domain as the app, path `/about`, with
+  the app at the root so a shared link always lands on "scan a sign".
 
-## 3. Launch day
+### Week 2 (28 Sep–4 Oct): the first free launch moment
 
-Three platforms. The two obvious ones are deliberately excluded and the reasons matter.
+- **Friday 2 Oct, 7am:** post "On Monday every Mon–Fri parking sign in NSW
+  is switched off. Here's the rule, and here's how to tell which signs
+  aren't." to r/sydney, with the reg 318 text and three photos. No link to
+  the app in the post; the app is in the profile and in comment replies to
+  anyone who asks. Same content as a 20-second Reel and a TikTok, posted
+  Friday 5pm.
+- **Monday 5 Oct, Labour Day:** the app's public-holiday callout is live.
+  Screenshot it on a real Surry Hills sign at 8am and post the screenshot:
+  "Scanned this at 8am. It knows." Ask for other people's holiday signs.
+- Seed the worst-sign contest: post the five most absurd poles from the
+  photography day and ask for worse. Every reply is a labelled example.
 
-### Reddit — r/sydney, Saturday morning AEST *(primary)*
+### Week 3 (5–11 Oct): assets and outreach
 
-Sydney-specific product, Sydney-specific audience, and Saturday morning is when people are about to go and park somewhere annoying. Title format: **"I got sick of misreading parking signs in the CBD so I built something that reads them for me — here's how accurate it actually is."** Lead with the accuracy number *including the failures*. Reddit forgives a flawed product and punishes an oversold one. Answer every comment for six hours; the comments are the launch, not the post.
+- Pitch local media, embargoed to launch morning: Time Out Sydney, the Daily
+  Telegraph city desk, news.com.au, ABC Radio Sydney Drive, 2GB. Subject
+  line: *"Sydney's parking signs are so confusing someone built an AI that
+  cites the road rules back at them."* Attach the accuracy number and the
+  Labour Day screenshots.
+- Outreach to the pages that already rank for "do parking signs apply on
+  public holidays": NRMA's advice article, Drive, CarsGuide, the OzBargain
+  thread. One email each: the tool exists, it is free, it cites the rule,
+  here is the link. A link from a page that already ranks is worth more than
+  a month of posting.
+- Film the 15-second vertical demo: walk up, photograph, verdict, timer. No
+  narration. Cut three variants.
+- Write the five SEO articles in section 6 and publish them the same week
+  so they start ageing before launch.
 
-### TikTok / Instagram Reels — same day, 5–7pm AEST *(primary)*
+### Week 4 (12–16 Oct): placement
 
-The highest-fit channel and the one most founders skip. Format: point the camera at a genuinely absurd sign, let the viewer try to read it for three seconds, then show the app's answer. This is native content on those platforms rather than an ad, the addressable audience is geographically exactly right, and cost per install is effectively zero. Post three variants on day one.
+Product placement, in the literal sense: putting the product where the
+problem happens.
 
-### Local media — pitched two weeks before, embargoed to launch day *(primary)*
+- **Cafés and bars on the worst streets.** Crown Street, King Street, Enmore
+  Road, Oxford Street, Glebe Point Road. A6 card at the counter: a photo of
+  the sign outside, "Can you park out the front? Scan it.", a QR code to the
+  app. Twenty venues, cards printed for under $60. The venue benefits: fewer
+  customers leaving early to move the car.
+- **Where visitors park in unfamiliar streets.** Ask RPA, St Vincent's and
+  Prince of Wales hospitals, and the Enmore Theatre, to add one line and a
+  link to their "getting here" pages. Same for USyd and UNSW student unions.
+- **Car share.** GoGet and Uber Carshare drivers park on unfamiliar streets
+  by definition and the operator wears the fine. Pitch a dashboard card in
+  50 inner-Sydney vehicles as a pilot. This is also the first Fleet lead.
+- **Driving schools.** Learner drivers are taught to read signs and mostly
+  cannot. Offer the app to three inner-west schools as a lesson aid.
+- Submit the app to r/sydney's wiki and the pinned resources of the three
+  largest inner-west Facebook groups. Ask; do not spam.
+- Confirm the launch-day posts are drafted, the media embargo is agreed, the
+  email sequence in section 7 is loaded, and the error dashboard is open.
 
-"Sydney parking signs are now so confusing there is an AI to read them" is a story that writes itself. Pitch Time Out Sydney, the Daily Telegraph's city desk, news.com.au, ABC Radio Sydney's drive slot and 2GB. One pickup is worth more than any other channel here, and radio in particular reaches the exact person sitting in a car.
+**Waitlist: no.** The URL is the product. Capture the email *after* the
+first scan, which the app now does, with the grandfather offer.
 
-### Skip Product Hunt and Hacker News on launch day
+## 5. Launch day: Saturday 17 October
 
-**Product Hunt** ranks a global, mostly American, mostly-builder audience. A Sydney-only parking app cannot win there, and a poor showing is a public result you cannot delete. **Hacker News** has the wrong audience for the product but the right audience for the study — so post the accuracy write-up as a **Show HN** four to six weeks later, titled around the measurement rather than the app: *"Show HN: I measured how well GPT-4o reads Australian parking signs."* That earns HN's respect and drives the engineers who will send you good bug reports.
+| Time (AEST) | Action |
+|:--|:--|
+| 06:00 | Media embargo lifts. Reply to any journalist within the hour. |
+| 08:00 | r/sydney: *"I got sick of misreading parking signs in the CBD so I built something that reads them and cites the road rules. Here's how accurate it actually is."* Lead with the number **and the failure rate**. Answer every comment for six hours; the comments are the launch. |
+| 08:30 | Email 5 in the sequence goes to the early-access list: "It's live. Send it to one person who got fined this year." |
+| 10:00 | Suburb Facebook groups, Inner West and Eastern Suburbs: the same post, shorter, with the Labour Day screenshot. |
+| 12:00 | LinkedIn: one post aimed at fleet managers and tradies, framed around the $1,500-a-year number, tagging no one. |
+| 17:00 | TikTok and Reels: three variants of the demo, one per hour. |
+| All day | Watch `scan_failed`, cost per active user, and the error intake. A prompt regression on launch day is fixed the same afternoon. |
 
-## 4. Post-launch: the first 90 days
+**Not on launch day.** Product Hunt (wrong audience, and a poor result is
+public forever). Hacker News (post the *study* as a Show HN four to six
+weeks later, titled around the measurement). Paid ads of any kind.
+
+## 6. The first 90 days: 17 October to 15 January
 
 ### Channel priority
 
-| # | Channel | CAC | Time to result | First action this week |
+| # | Channel | CAC | Time to result | First action |
 |:--|:--|:--|:--|:--|
-| 1 | Short-form video (TikTok / Reels) | ~$0 | Days | Film five signs on one walk through the CBD. Post one a day. |
-| 2 | Earned local media | $0 | 2–4 weeks, spiky | Write one pitch email, send to five outlets, embargo to launch. |
-| 3 | Reddit + suburb Facebook groups | $0 | Days | Answer parking questions for two weeks *before* ever linking the app. |
-| 4 | SEO | $0 | 3–6 months | Publish the NSW sign glossary this week so it starts ageing. |
-| 5 | Fleet outbound (LinkedIn, direct) | ~$40/vehicle | 4–8 weeks | List 20 Sydney courier and trades businesses. Email ten. |
+| 1 | Short-form video | ~$0 | Days | Post one absurd sign a day for 30 days. The format is the sign for three seconds, then the answer. |
+| 2 | Placement (cards, venue pages, car share) | ~$3/venue | 2–4 weeks | Twenty venues by launch; forty by day 30. Track by a `?src=` parameter per placement. |
+| 3 | Earned media | $0 | Spiky | One pitch a week to a new outlet until three have run it. |
+| 4 | Reddit and Facebook groups | $0 | Days | Answer parking questions daily; link only when asked. |
+| 5 | Links from pages that already rank | $0 | 2–6 weeks | One outreach email a day to any page ranking for a target query. |
+| 6 | Search | $0 | 3–6 months | Five articles live by launch, one a fortnight after. |
+| 7 | Fleet outbound | ~$40/vehicle | 4–8 weeks | Twenty inner-Sydney trades and courier businesses listed by day 14; ten emailed by day 21. |
+| 8 | Paid (Reddit geo-targeted to Sydney, Meta inner-west 25–45) | ~$1–3/install | Days | **Only after the accuracy gate passes.** $5/day each, kill anything above $3. |
+
+### The free launch moments on the calendar
+
+Each is a post, a Reel, and an email, prepared a week ahead.
+
+| Date | Moment | Angle |
+|:--|:--|:--|
+| Mon 5 Oct | Labour Day | "Every Mon–Fri sign is off today. Here's the rule." (pre-launch rehearsal) |
+| Fri 18 Dec | Last school day of 2026 | "From Monday, every School Days sign is off until 2 February." |
+| Fri 25 Dec, Sat 26 Dec, Mon 28 Dec | Christmas, Boxing Day, additional day | Three holiday verdicts in four days; the Boxing Day sales are the busiest parking day of the year |
+| Fri 1 Jan | New Year's Day | Same |
+| Tue 26 Jan | Australia Day | Same, plus "school goes back Tuesday 2 Feb" |
 
 ### Content that targets real search intent
 
-1. **"What do 1P, 2P and 4P mean on a NSW parking sign?"** — highest-volume beginner query in the category.
-2. **"No Stopping vs No Parking in NSW — and why one costs more than twice the other"** — high intent, high emotion.
-3. **"Which way is the arrow pointing? Directional parking signs in Sydney, explained"** — your differentiator, as an article.
-4. **"NSW parking fines 2026: every amount, in one table"** — pure link bait, gets cited, ranks for years.
-5. **"How to appeal a NSW parking fine (and what evidence actually works)"** — catches people after the fine and sells the Plus appeal pack without an ad. Hook it to the 1 July 2025 reform: officers must now attach a notice to the vehicle, and where an exception applies the fine must arrive within 7 days or be withdrawn. Most drivers do not know this.
+1. **"What do 1P, 2P and 4P mean on a NSW parking sign?"**
+2. **"No Stopping vs No Parking in NSW — and why one costs more than twice the other"**
+3. **"Do parking signs apply on public holidays in NSW? Yes, no, and the regulation that decides"** — the article the launch claim rests on
+4. **"Which way is the arrow pointing? Directional parking signs in Sydney, explained"**
+5. **"NSW parking fines 2026: every amount in one table"**
+6. **"How to appeal a NSW parking fine (and the 7-day rule most drivers don't know)"**
 
-Distribution for each: post the full text to the relevant subreddit as a comment answer when the question comes up naturally, cut the core point into a 20-second video, and cite it from the landing page.
+Each is repurposed as a 20-second video and as the answer whenever the
+question comes up on Reddit.
 
-### Communities and partnerships
+### Community, partnerships, and the growth loop
 
-- **Engage in:** [r/sydney](https://reddit.com/r/sydney), [r/AusLegal](https://reddit.com/r/AusLegal), and the suburb Facebook groups for the Inner West and Eastern Suburbs.
-- **Partnership 1 — car share.** GoGet and Uber Carshare drivers park on unfamiliar streets by definition, and the operator eats the fines. That is the warmest fleet conversation available.
-- **Partnership 2 — payment handoff.** When a sign says payment is required, offer a tap-through to Park'nPay or EasyPark. They own the transaction and have no interest in reading signs; you read signs and have no interest in taking payment. Genuinely complementary, and it makes ParkSense the first app opened rather than the second. Park'nPay is the better first call: it is the NSW government app and charges drivers no service fee, so recommending it costs your user nothing.
+- **Engage in** r/sydney, r/AusLegal, and the inner-west and eastern-suburbs
+  Facebook groups. Daily, ten minutes, answers first.
+- **Partnership 1, car share.** The dashboard-card pilot from week 4 becomes
+  a Fleet conversation at day 60 with the pilot's own scan data.
+- **Partnership 2, payment handoff.** When a sign says payment is required,
+  offer a tap-through to Park'nPay (no fee to the driver, government-run).
+  Complementary: they take payment, ParkSense reads the sign.
+- **The loop.** Every result has a Share button. Every share carries the
+  street and the verdict. The **"Sydney's worst parking sign" weekly
+  contest** takes submissions from those shares, publishes ParkSense's
+  reading beside the correct one, and every entry becomes a labelled case.
+  Run it from week one; it is the only tactic that grows reach and accuracy
+  at the same time.
 
-### One growth hack, specific to this product
+### Email sequence
 
-**"Sydney's worst parking sign" — a weekly public contest.** People submit a photo, ParkSense publishes its reading alongside the correct answer, and the most incomprehensible sign of the week wins. It is native content for every channel above, it is funny enough to spread on its own, councils and journalists notice it — and every submission is a labelled example for the accuracy set. It is the only tactic here that grows distribution and fixes blocker B6 at the same time. Run it from week one.
+The early-access list is captured in-app after the first scan and on the
+landing page. Five emails, under 150 words each, one link each.
 
-## 5. The five metrics
+| # | When | Subject | Body in one line | CTA |
+|:--|:--|:--|:--|:--|
+| 1 | Immediately | You're locked in | Confirms the grandfather offer, what Plus will include, and that the scan is free regardless | Add ParkSense to your home screen |
+| 2 | Day 3 | The day your parking sign is switched off | Reg 318 in plain English, with the next public holiday date | Read the rule |
+| 3 | Day 7 | Which way does the arrow point? | The side-of-the-sign problem, one photo, one answer | Scan a sign near you |
+| 4 | Day 10 | Reminders that reach your pocket | Install to home screen; allow notifications; the warning arrives with the app closed | Turn on reminders |
+| 5 | Launch morning | It's live. Send it to one person who got fined this year | The accuracy number, the failure rate, and the share link | Share ParkSense |
+| 6 | Day 91 | Plus is here, and it's yours already | Plus opens for everyone else at $19.99; their account stays free | Open ParkSense |
 
-Five, tracked every Monday. Not fifty.
+## 7. The five metrics
 
-| Metric | Definition | Day 30 | Day 60 | Day 90 | Tool | If below target |
-|:--|:--|:--:|:--:|:--:|:--|:--|
-| **Measured accuracy** | % of labelled signs where the verdict matches ground truth | 85% | 90% | 93% | Manual spreadsheet + contest submissions | Stop all marketing. Fix the prompt. Nothing else matters at this number. |
-| **Scan → timer rate** | % of `canPark: true` results where a timer is started | 25% | 32% | 40% | PostHog funnel | The verdict is not being trusted, or the button is not being found. Watch ten session recordings before changing anything. |
-| **Week-4 return rate** | % of week-1 users who scan again in week 4 | 15% | 22% | 28% | PostHog cohorts | This is a one-off novelty, not a habit. Interview five returners and find what they have in common. |
-| **Repeat scanners** | Users with 3+ scans, all time | 150 | 400 | 800 | PostHog | Reach is fine, retention is not. Stop adding channels and fix the second visit. |
-| **Cost per active user** | Monthly OpenAI spend ÷ monthly active users | <$0.12 | <$0.10 | <$0.08 | OpenAI dashboard ÷ PostHog | Somebody is scripting the endpoint, or one user is scanning hundreds of times. Check the quota before you check the prompt. |
+Defined in full in [METRICS.md](./METRICS.md). Reviewed every Monday.
 
-**Ignore:** total page views, app "downloads", Reddit upvotes, and total scans. The first three are launch-day noise that will never repeat, and total scans rises when a single bot finds your endpoint. Every one of them can go up on a week the product got worse.
+| Metric | Day 30 | Day 60 | Day 90 | If below target |
+|:--|:--:|:--:|:--:|:--|
+| Measured accuracy (single sign) | 85% | 90% | 93% | Stop posting. Fix the largest failure class. |
+| Scan → timer rate | 25% | 32% | 40% | Watch five people scan in person. |
+| Week-4 return rate | 15% | 22% | 28% | Stop adding channels. Interview five returners. |
+| Repeat scanners (3+) | 150 | 400 | 800 | If retention holds, push the contest harder. |
+| Cost per active user | <$0.12 | <$0.10 | <$0.08 | Check the quota table for a scripted device first. |
 
-## 6. Budget: $0–500/month
+## 8. Budget
 
-**Fixed and unavoidable (~$60/month):** Vercel Pro ~$30, OpenAI ~$15 at early volume, domain ~$2, Apple developer programme ~$12 amortised. Enrol in Apple's Small Business Program before the first paid release — it is the difference between a 15% and a 30% cut and it does not apply retroactively. PostHog, Sentry and Plausible all have free tiers that comfortably cover the first 90 days — take them and do not upgrade until a limit is actually hit.
+**Fixed, roughly $60/month:** Vercel Pro (needed for the once-a-minute
+cron; or $0 with Supabase pg_cron), OpenAI at early volume, the domain.
+PostHog, Supabase and the error intake are on free tiers.
 
-**Spend nothing on ads for 90 days.** Not frugality: with accuracy unmeasured, paid acquisition buys the one thing that kills this product, which is volume arriving faster than you can find out whether the verdicts are right.
+**Placement, one-off:** about $60 for venue cards and $150 for the sign
+photography day if someone else walks it. **$210 total** buys the launch
+message and the first physical channel.
 
-**The one investment under $200: pay someone $150 to photograph and ground-truth 200 Sydney parking signs.** A student with a phone and a Saturday, walking the CBD, Surry Hills, Newtown and Bondi, capturing each sign with its correct interpretation recorded alongside.
+**Paid reach: $0 until the accuracy gate passes.** Then $5/day on Reddit
+geo-targeted to Sydney and $5/day on Meta targeting the inner west, 25–45,
+for two weeks, and kill anything above $3 per install. **Under $300/month**
+at full tilt.
 
-That $150 is the highest-leverage money in this entire plan, and it is worth being explicit about why. It closes blocker B6, which is the difference between a product you can sell and one you cannot. It produces the launch's single best asset — a real accuracy number. It creates a regression set, so every future prompt change can be verified instead of hoped at. And it converts the biggest risk in section 1, the person fined because the app said yes, from an unknown into a measured, disclosed, bounded rate.
+**The one investment under $200:** the photography day. It is the accuracy
+number, the launch message, the regression set, and the answer to the
+biggest risk, for $150.
 
-Everything else in this document is a channel. That $150 is the product.
+## 9. What would make this stop
+
+- Accuracy below 85% at day 30 after two fix cycles: the product is not
+  ready and no amount of placement should be bought for it.
+- A verified fined-because-of-a-wrong-verdict story: pause marketing, publish
+  the case and the fix, add the failure class to the harness.
+- Week-4 return under 10% at day 60 with reach on target: the app is a
+  novelty. Interview before spending.
+- Cost per active user above $0.20 for two weeks: someone is scripting the
+  endpoint; tighten the quota before anything else.
+
+None of these is a reason to lower the price. The price is not the problem
+in any of them.

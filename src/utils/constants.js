@@ -38,6 +38,8 @@ export const VIEW_STATES = {
   TIMER: 'timer',
   PRIVACY: 'privacy',
   TERMS: 'terms',
+  HISTORY: 'history',
+  SETTINGS: 'settings',
 };
 
 export const TIMER_CONFIG = {

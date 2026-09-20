@@ -20,8 +20,12 @@ from the pixels **and the calendar**:
 - **Stacked plates.** The model transcribes each plate; the verdict engine
   applies precedence in code (No Stopping beats a clearway beats a time limit).
 - **The next twelve hours**, as one strip: park now, leave by 4pm.
+- **Reminders that reach a closed tab.** Install it, allow notifications, and
+  the 15-minute warning arrives with the phone in your pocket.
 - **Community data (opt-in).** Anonymous, street-level, and pooled: what
   parking is like on this street, and when people actually park here.
+- **Installable, offline, with history.** Add to home screen, recent scans
+  kept on the device, share a result in one tap.
 
 ## Getting started
 
@@ -49,6 +53,13 @@ SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 DEVICE_HASH_SALT=<any long random string>
 
+# Optional — push reminders that reach a closed tab. Generate the keys with
+# `npx web-push generate-vapid-keys`. Needs the database too.
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+CRON_SECRET=<any long random string>
+
 # Optional — tuning and monitoring.
 SCAN_DAILY_QUOTA=40
 SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project>
@@ -60,11 +71,27 @@ REACT_APP_POSTHOG_HOST=https://us.i.posthog.com
 
 ### Database (optional)
 
-Create a Supabase project and run `supabase/migrations/0001_init.sql` in the
-SQL editor. It creates the quota table, the community events table, and the
-atomic quota function. Row-level security is on with no policies, so the
+Create a Supabase project and run the files in `supabase/migrations/` in
+order in the SQL editor. They create the quota table, the community events
+table, the push subscription and reminder tables, the early-access list, and
+the atomic quota function. Row-level security is on with no policies, so the
 anon key can read nothing; only the service-role key used by the functions
 can touch the tables.
+
+### Push reminders (optional)
+
+Reminders are queued in the database when a timer starts and delivered by
+`GET /api/cron/send-reminders`, which must be called about once a minute
+with `Authorization: Bearer $CRON_SECRET`. Two ways to do that:
+
+- **Vercel Cron** (Pro plan for per-minute schedules): add to `vercel.json`
+  `"crons": [{ "path": "/api/cron/send-reminders", "schedule": "* * * * *" }]`.
+  Vercel sends `CRON_SECRET` as the bearer token automatically.
+- **Supabase pg_cron** (free): the exact SQL is in
+  `supabase/migrations/0002_push_and_subscribers.sql`.
+
+On iOS, push needs the app added to the home screen; the app explains that
+where it matters.
 
 ### Running
 
@@ -124,13 +151,15 @@ non-`/api/` path to the SPA.
 - `docs/PRICING.md` — pricing strategy
 - `docs/GO-TO-MARKET.md` — release plan
 - `docs/COMPETITIVE-EDGE.md` — why the calendar is the moat
+- `docs/PERSONAS.md`, `docs/METRICS.md`, `docs/LANDING-PAGE.md` — who it is
+  for, what to measure, what the landing page says
 - `eval/README.md` — how to measure accuracy
 
 ## Known limitations
 
-- Browser notifications scheduled with `setTimeout` do not fire reliably when
-  the tab is backgrounded on mobile. Push notifications need a service worker
-  and a push service; that is the planned paid feature.
+- Push reminders need the app installed to the home screen on iOS, and need
+  the VAPID keys, database and cron trigger configured. Without them the
+  in-tab warning still fires while the tab is open.
 - Fine amounts are indexed by NSW every 1 July. `api/_lib/fines.js` carries
   the date it was last checked and flags itself stale after the review date.
 - Sydney only. The timezone, calendar and fine schedule are NSW-specific.

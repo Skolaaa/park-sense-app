@@ -69,7 +69,11 @@ Single-page React app with no router — view state is managed entirely in `App`
 **View state flow:**
 ```
 HOME → CAMERA → PREVIEW → SIDE_SELECTION → ANALYZING → RESULTS ⇄ TIMER
+HOME → HISTORY → RESULTS (historical: no timer, "checked at" the stored time)
+HOME → SETTINGS → PRIVACY | TERMS
 ```
+Navigation away from HOME remembers `returnView`, so Back from a legal page
+returns to wherever it was opened from.
 
 **Data flow:**
 1. `CameraCapture` streams video via `getUserMedia`, captures a frame to a hidden `<canvas>`, returns a base64 JPEG.
@@ -86,8 +90,13 @@ HOME → CAMERA → PREVIEW → SIDE_SELECTION → ANALYZING → RESULTS ⇄ TIM
 6. `ResultsDisplay` renders the result: verdict card, public-holiday / school-day callout, timeline strip, leave-by time, sign details, street insights from `/api/street` (opt-in), the disclaimer, and "Report a wrong reading". If `noSignFound=true` a retake screen is shown; below 0.65 confidence (or when the engine flags `uncertain`) a "check this one yourself" screen is shown first.
 7. Timer start/stop and expiry emit community events and record a pending outcome; on the next visit to Home the app asks "did you get a fine?" (`OutcomePrompt`) and posts the answer.
 
+**Installable app and push:**
+- `public/sw.js` precaches the built shell from `asset-manifest.json`, serves navigations network-first with the cached shell as fallback, never touches `/api/*`, and handles `push` and `notificationclick`. Registered by `src/serviceWorkerRegistration.js` in production only; a new version dispatches `parksense:update` and Home shows a reload prompt.
+- `src/services/installService.js` captures `beforeinstallprompt`; `InstallCard` offers install (or iOS instructions) after the first scan and in Settings.
+- Push: the client (`src/services/pushService.js`) reads `/api/push/config`, subscribes through the service worker, stores the subscription via `/api/push/subscribe`, and on timer start posts the end time to `/api/push/schedule`, which queues a warning and an expiry row in `reminders`. `/api/cron/send-reminders` (bearer `CRON_SECRET`, called once a minute) sends what is due with `web-push`. The in-tab `setTimeout` warning stays armed as the fallback; the notification `tag` de-duplicates.
+
 **Timer system:**
-- `useTimer` hook (lives in `App`, survives view transitions) manages a `setInterval` countdown.
+- `useTimer` hook (lives in `App`, survives view transitions) manages a `setInterval` countdown and takes an `onExpire` callback.
 - `TimerService` persists `{ startTime, durationMs }` to localStorage — `remainingMs` is always recomputed as `(startTime + durationMs) - Date.now()`, which handles page refreshes and drift.
 - `NotificationService` schedules a `setTimeout` for the 15-minute warning and fires `new Notification(...)`. Backgrounded tab limitation is documented in the file.
 - When the timer is running: `TimerOverlay` (sticky footer) shows on `ResultsDisplay`; navigating to `TIMER` shows the full-screen `ParkingTimer` with an SVG ring.
@@ -104,6 +113,9 @@ HOME → CAMERA → PREVIEW → SIDE_SELECTION → ANALYZING → RESULTS ⇄ TIM
 - `src/services/parkingAnalysis.js` — calls `/api/analyze`; mock fallback
 - `src/services/communityService.js`, `consent.js`, `identity.js`, `outcomeService.js`, `analytics.js`, `errorReporting.js` — client side of the above
 - `src/components/LegalScreen.js` — privacy and terms text; keep it true to what the code does
+- `src/components/SettingsScreen.js`, `HistoryScreen.js`, `InstallCard.js`, `EarlyAccessCard.js` — the app-shell screens and cards
+- `src/services/historyService.js` (recent scans, thumbnails), `shareService.js`, `earlyAccessService.js` (`/api/subscribe`), `pushService.js`, `installService.js`
+- `api/push/*.js`, `api/cron/send-reminders.js`, `api/_lib/push.js` — Web Push; `api/subscribe.js` — early-access list
 - `scripts/eval-signs.js` + `eval/README.md` — accuracy harness over labelled signs
 - `src/hooks/useTimer.js` — countdown interval, auto-resume on mount
 - `src/services/timerService.js` — localStorage persistence
@@ -175,6 +187,6 @@ to three decimals (~110 m) and stores the device as a salted hash. Keep
 
 ## Known Limitations
 
-- Browser notifications via `setTimeout` do not fire reliably when the tab is backgrounded on mobile. Full background notifications would require a service worker + Push API.
+- Push reminders require `VAPID_*`, the database, and a once-a-minute call to `/api/cron/send-reminders`; on iOS they also require the app to be on the home screen. The in-tab `setTimeout` warning is the fallback and only fires while the tab is open.
 - The bundled calendar fallback covers 2025–2027; the live dataset is fetched per warm instance and cached for a day. Extend the fallback table each year.
 - Fine amounts are indexed every 1 July. `FINES_REVIEW_BY` in `api/_lib/fines.js` flags them stale after that date; verify against the Transport for NSW schedule and bump both dates.
