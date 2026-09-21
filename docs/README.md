@@ -18,6 +18,8 @@ Read in order:
 5. **[PERSONAS.md](./PERSONAS.md)**, **[METRICS.md](./METRICS.md)**,
    **[LANDING-PAGE.md](./LANDING-PAGE.md)** — who it is for, the five numbers
    reviewed every Monday, and the landing page copy the plan calls for.
+6. **[RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md)** — the step-by-step path
+   from this branch to launch, with a check for every step.
 
 The status table at the top of LAUNCH-READINESS.md records which of the
 blockers have since been closed in code.
